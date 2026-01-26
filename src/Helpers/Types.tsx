@@ -50,6 +50,11 @@ export enum SolveCleanliness {
     Mistake = "Mistake",
 }
 
+export enum SolveLuckiness {
+    FullStep = "FullStep",
+    Skip = "Skip"
+}
+
 export enum PllCornerPermutation {
     Solved = "Solved",
     Adjacent = "Adjacent",
@@ -73,6 +78,7 @@ export interface Filters {
     ollCases: string[],
     steps: StepName[],
     solveCleanliness: string[],
+    solveLuckiness: string[],
     method: MethodName,
     sessions: string[],
     lowestInspection: number,
@@ -105,7 +111,8 @@ export interface Solve {
     isCorrupt: boolean,
     method: MethodName,
     session: string,
-    isMistake: boolean
+    isMistake: boolean,
+    isFullStep: boolean
 }
 
 export interface AppState {
@@ -128,6 +135,7 @@ export interface FilterPanelState {
     chosenOLLs: Option[],
     chosenSessions: Option[],
     solveCleanliness: Option[],
+    solveLuckiness: Option[],
     tabKey: number,
     windowSize: number,
     pointsPerGraph: number,

@@ -3,7 +3,7 @@ import moment from "moment";
 import DatePicker from "react-datepicker";
 import Select from "react-select";
 import { MultiSelect, Option } from "react-multi-select-component";
-import { CrossColor, FilterPanelProps, FilterPanelState, Filters, MethodName, Solve, SolveCleanliness, Step, StepName } from "../Helpers/Types";
+import { CrossColor, FilterPanelProps, FilterPanelState, Filters, MethodName, Solve, SolveCleanliness, SolveLuckiness, Step, StepName } from "../Helpers/Types";
 import { ChartPanel } from "./ChartPanel";
 import { calculateMovingAverage, calculateMovingStdDev } from "../Helpers/MathHelpers";
 import { FormControl, Card, Row, Offcanvas, Col, Button, Tooltip, OverlayTrigger, Alert, Container, CardText } from 'react-bootstrap';
@@ -25,6 +25,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             ollCases: Const.OllCases.map(x => x.value),
             steps: [StepName.Cross, StepName.F2L_1, StepName.F2L_2, StepName.F2L_3, StepName.F2L_4, StepName.OLL, StepName.PLL],
             solveCleanliness: Const.solveCleanliness.map(x => x.value),
+            solveLuckiness: Const.solveLuckiness.map(x => x.value),
             method: MethodName.CFOP,
             sessions: [],
             lowestInspection: 0,
@@ -42,6 +43,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         ],
         chosenSessions: [],
         solveCleanliness: Const.solveCleanliness,
+        solveLuckiness: Const.solveLuckiness,
         chosenPLLs: Const.PllCases,
         chosenOLLs: Const.OllCases,
         tabKey: 1,
@@ -94,6 +96,13 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             return false;
         }
 
+        if (filters.solveLuckiness.indexOf(SolveLuckiness.FullStep) < 0 && solve.isFullStep) {
+            return false;
+        }
+        if (filters.solveLuckiness.indexOf(SolveLuckiness.Skip) < 0 && !solve.isFullStep) {
+            return false;
+        }
+
         return true;
     }
 
@@ -141,15 +150,34 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         return newSolves;
     }
 
+    static markAllLuckiness(allSolves: Solve[]): Solve[] {
+        let newSolves: Solve[] = [];
+
+        for (let i = 0; i < allSolves.length; i++) {
+            newSolves.push(allSolves[i]);
+            let numSteps = Const.MethodSteps[newSolves[i].method].length;
+            for (let j = 0; j < numSteps; j++) {
+                if (newSolves[i].steps[j].time == 0) {
+                    newSolves[i].isFullStep = false;
+                    continue;
+                }
+            }
+        }
+
+        return newSolves;
+    }
+
     static applyFiltersToSolves(allSolves: Solve[], filters: Filters, windowSize: number): Solve[] {
         let solvesWithMistakesMarked = this.markAllMistakes(allSolves, windowSize);
+        let solvesWithLuckinessMarked = this.markAllLuckiness(solvesWithMistakesMarked);
 
         let filteredSolves: Solve[] = [];
-        solvesWithMistakesMarked.forEach(x => {
+        solvesWithLuckinessMarked.forEach(x => {
             if (this.passesFilters(x, filters)) {
                 filteredSolves.push(x);
             }
         })
+
         return filteredSolves;
     }
 
@@ -171,6 +199,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             showFilters: prevState.showFilters,
             showTestAlert: prevState.showTestAlert,
             solveCleanliness: prevState.solveCleanliness,
+            solveLuckiness: prevState.solveLuckiness,
             badTime: prevState.badTime,
             goodTime: prevState.goodTime,
             useLogScale: prevState.useLogScale
@@ -179,6 +208,9 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         // Update anything that needs it
         newState.allSolves = nextProps.solves;
         newState.filteredSolves = FilterPanel.applyFiltersToSolves(nextProps.solves, prevState.filters, newState.windowSize);
+        if (newState.windowSize >= newState.filteredSolves.length) {
+            newState.windowSize = Math.max(5, Math.ceil(newState.filteredSolves.length / 4));
+        }
 
         return newState;
     }
@@ -351,6 +383,16 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         })
     }
 
+    setLuckiness(selectedList: any[]) {
+        let newFilters: Filters = this.state.filters;
+        newFilters.solveLuckiness = selectedList.map(x => x.value);
+
+        this.setState({
+            solveLuckiness: selectedList,
+            filters: newFilters,
+        })
+    }
+
     setTestAlert(showTestAlert: boolean) {
         this.setState({ showTestAlert: showTestAlert })
     }
@@ -508,6 +550,17 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                         />,
                         "Solve Cleanliness",
                         "Choose whether to show messed up solves or clean solves. The definition of a mistake is: Any solve that took 3 standard deviations more than average OR any step that took 3 standard deviations more than average for that step"
+                    )}
+
+                    {this.createFilterHtml(
+                        <MultiSelect
+                            options={Const.solveLuckiness}
+                            value={this.state.solveLuckiness}
+                            onChange={this.setLuckiness.bind(this)}
+                            labelledBy="Select"
+                        />,
+                        "Solve Luckiness",
+                        "Choose whether to show fullstep solves, or solves with skips in them"
                     )}
 
                     {this.createFilterHtml(
