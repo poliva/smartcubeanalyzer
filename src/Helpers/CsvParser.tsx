@@ -206,12 +206,15 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
             s.time = timeMs / 1000;
             s.recognitionTime = recMs / 1000;
             s.executionTime = execMs / 1000;
-            // Ensure step-level numeric fields are always initialized
-            if (s.turns === undefined || s.turns === null) {
-                s.turns = 0;
-            }
-            if (s.tps === undefined || s.tps === null) {
-                s.tps = 0;
+            // Count turns from move tokens, excluding rotations (x, y, z and variants).
+            const normalizedMoves = moves.trim().replace(/^"(.*)"$/, "$1");
+            const moveTokens = normalizedMoves
+                .split(/\s+/)
+                .filter(token => token.length > 0 && !/^[xyzXYZ]/.test(token));
+
+            s.turns = moveTokens.length;
+            if (s.time > 0) {
+                s.tps = s.turns / s.time;
             }
             if (caseField) {
                 s.case = get(caseField);
