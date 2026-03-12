@@ -166,6 +166,9 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
         const pllTime = getNumber("pll_time");
         const pllExec = getNumber("pll_execution_time");
 
+        const ollCaseRaw = get("oll_case_id");
+        const pllCaseRaw = get("pll_case_name");
+
         const totalExecMs =
             crossExec +
             f2lExecs.reduce((a, b) => a + b, 0) +
@@ -232,13 +235,19 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
         // Normalize Acubemy OLL/PLL skip encodings to the shared "Solved" case label,
         // so they behave like Cubeast data in filters and charts.
         const ollStep = steps[5];
-        if (ollStep && ollStep.case === "-1") {
-            ollStep.case = "Solved";
+        if (ollStep) {
+            ollStep.name = StepName.OLL;
+            if (ollCaseRaw) {
+                ollStep.case = ollCaseRaw === "-1" ? "Solved" : ollCaseRaw;
+            }
         }
 
         const pllStep = steps[6];
-        if (pllStep && pllStep.case === "Unknown") {
-            pllStep.case = "Solved";
+        if (pllStep) {
+            pllStep.name = StepName.PLL;
+            if (pllCaseRaw) {
+                pllStep.case = pllCaseRaw === "Unknown" ? "Solved" : pllCaseRaw;
+            }
         }
 
         return solve;

@@ -52,5 +52,23 @@ describe('CsvParser', () => {
         // oll_moves: z U2 L' -> 2 non-rotation tokens (U2, L')
         expect(solve.steps[5].turns).toBe(2);
     });
+
+    test('Acubemy OLL/PLL skips are treated as Solved cases', () => {
+        const csv = `solve_id,date,total_time,analysis_type,device_name,session_name,cross_face,oll_case_id,pll_case_name
+1,2026-01-08T10:32:50.222Z,10000,CFOP,DEV,TEST,U,-1,Unknown`;
+
+        const solves: Solve[] = parseCsv(csv, ',');
+        expect(solves.length).toBe(1);
+        const solve = solves[0];
+
+        expect(solve.steps[5].name).toBe('OLL');
+        expect(solve.steps[6].name).toBe('PLL');
+
+        // OLL skip: Acubemy encodes oll_case_id as -1; treat as "Solved"
+        expect(solve.steps[5].case).toBe('Solved');
+
+        // PLL skip: Acubemy encodes pll_case_name as "Unknown"; treat as "Solved"
+        expect(solve.steps[6].case).toBe('Solved');
+    });
 });
 
