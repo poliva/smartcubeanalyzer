@@ -16,6 +16,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         allSolves: [],
         filteredSolves: [],
         filters: {
+            sources: ['cubeast', 'acubemy'],
             startDate: moment.utc("1700-01-01").toDate(),
             endDate: moment.utc("2300-01-01").toDate(),
             fastestTime: 0,
@@ -41,6 +42,10 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             { label: CrossColor.Unknown, value: CrossColor.Unknown },
         ],
         chosenSessions: [],
+        chosenSources: [
+            { label: 'Cubeast', value: 'cubeast' },
+            { label: 'Acubemy', value: 'acubemy' }
+        ],
         solveCleanliness: Const.solveCleanliness,
         chosenPLLs: Const.PllCases,
         chosenOLLs: Const.OllCases,
@@ -60,6 +65,9 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             return false;
         }
         if (solve.method != filters.method) {
+            return false;
+        }
+        if (filters.sources.indexOf(solve.source) < 0) {
             return false;
         }
         if (filters.crossColors.indexOf(solve.crossColor) < 0) {
@@ -165,6 +173,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             chosenPLLs: prevState.chosenPLLs,
             chosenOLLs: prevState.chosenOLLs,
             chosenSessions: prevState.chosenSessions,
+            chosenSources: prevState.chosenSources,
             tabKey: prevState.tabKey,
             windowSize: prevState.windowSize,
             pointsPerGraph: prevState.pointsPerGraph,
@@ -227,6 +236,17 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         this.setState({
             filters: newFilters,
             chosenSessions: selectedList
+        })
+    }
+
+    sourcesChanged(selectedList: any[]) {
+        let selectedSources: ('cubeast' | 'acubemy')[] = selectedList.map(x => x.value);
+        let newFilters: Filters = this.state.filters;
+        newFilters.sources = selectedSources;
+
+        this.setState({
+            filters: newFilters,
+            chosenSources: selectedList
         })
     }
 
@@ -464,6 +484,19 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                         />,
                         "Which Sessions?",
                         "This dropdown lets you choose which method to show solves for."
+                    )}
+                    {this.createFilterHtml(
+                        <MultiSelect
+                            options={[
+                                { label: 'Cubeast', value: 'cubeast' },
+                                { label: 'Acubemy', value: 'acubemy' }
+                            ]}
+                            value={this.state.chosenSources}
+                            onChange={this.sourcesChanged.bind(this)}
+                            labelledBy="Select"
+                        />,
+                        "Source",
+                        "Choose which sources (Cubeast or Acubemy) to include in the analysis."
                     )}
                     {this.createFilterHtml(
                         <MultiSelect

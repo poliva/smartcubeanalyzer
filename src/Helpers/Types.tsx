@@ -76,7 +76,8 @@ export interface Filters {
     method: MethodName,
     sessions: string[],
     lowestInspection: number,
-    highestInspection: number
+    highestInspection: number,
+    sources: ('cubeast' | 'acubemy')[]
 }
 
 export interface Step {
@@ -131,6 +132,7 @@ export interface FilterPanelState {
     chosenOLLs: Option[],
     chosenSessions: Option[],
     solveCleanliness: Option[],
+    chosenSources: Option[],
     tabKey: number,
     windowSize: number,
     pointsPerGraph: number,
