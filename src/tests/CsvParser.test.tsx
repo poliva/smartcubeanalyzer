@@ -17,6 +17,7 @@ describe('CsvParser', () => {
         expect(solve.rawSource).toBe('cubeast');
         expect(solve.rawSourceId).toBe('7d11ba20-55d3-489f-a075-6298f216367d');
         expect(solve.session).toBe('PAU-2026-01');
+        expect(solve.crossColor).toBe('Yellow'); // UF solution rotation maps to Yellow cross
     });
 
     test('parses Acubemy CSV into solves', () => {
@@ -27,11 +28,14 @@ describe('CsvParser', () => {
         expect(solve.rawSource).toBe('acubemy');
         expect(solve.rawSourceId).toBe('139047');
         expect(solve.session).toBe('PAU-2026-01');
+        expect(solve.turns).toBe(79);
+        expect(solve.tps).toBeCloseTo(2.9079, 3);
+        expect(solve.crossColor).toBe('Yellow'); // cross_face U -> Yellow
+        expect(solve.inspectionTime).toBeCloseTo(0.644, 3);
         expect(solve.steps[0].name).toBe('Cross');
         expect(solve.steps[1].name).toBe('F2L Slot 1');
         expect(solve.steps[5].name).toBe('OLL');
         expect(solve.steps[6].name).toBe('PLL');
     });
-}
-);
+});
 

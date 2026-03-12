@@ -117,6 +117,33 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
             solve.method = MethodName.CFOP;
         }
 
+        const crossFace = get("cross_face");
+        if (crossFace) {
+            switch (crossFace) {
+                case "D":
+                    solve.crossColor = CrossColor.White;
+                    break;
+                case "U":
+                    solve.crossColor = CrossColor.Yellow;
+                    break;
+                case "F":
+                    solve.crossColor = CrossColor.Green;
+                    break;
+                case "B":
+                    solve.crossColor = CrossColor.Blue;
+                    break;
+                case "R":
+                    solve.crossColor = CrossColor.Red;
+                    break;
+                case "L":
+                    solve.crossColor = CrossColor.Orange;
+                    break;
+                default:
+                    solve.crossColor = CrossColor.Unknown;
+                    break;
+            }
+        }
+
         // aggregate recognition/execution
         const crossTime = getNumber("cross_time");
         const crossExec = getNumber("cross_execution_time");
