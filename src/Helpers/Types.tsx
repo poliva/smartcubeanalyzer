@@ -92,6 +92,9 @@ export interface Step {
 
 export interface Solve {
     id: string,
+    source: 'cubeast' | 'acubemy',
+    rawSourceId?: string,
+    rawSource?: string,
     time: number,
     date: Date,
     crossColor: CrossColor,

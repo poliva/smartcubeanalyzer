@@ -20,6 +20,9 @@ test('GetEmptySolve returns an empty solve', () => {
     const solve = GetEmptySolve();
     expect(solve).toEqual({
         id: "",
+        source: "cubeast",
+        rawSourceId: "",
+        rawSource: "",
         time: 0,
         date: expect.any(Date),
         crossColor: "Unknown",

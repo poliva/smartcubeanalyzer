@@ -19,21 +19,23 @@ export class HelpPanel extends React.Component<HelpPanelProps, HelpPanelState> {
                     <br />
                     <br />
 
-                    To use Cubeast Analyzer, start by <a href="https://app.cubeast.com/log/solves">exporting your solves as a CSV</a>
+                    To use Cubeast Analyzer, start by exporting your solves as CSV files from your training platforms.
                     <br />
                     <a href="https://app.cubeast.com/log/solves"><img className="col-8" src={require("../Assets/CubeastCsv.png")}></img></a>
 
                     <br />
                     <br />
 
-                    Once your solves are exported, <a href="https://app.cubeast.com/exports">download them from Cubeast</a>
+                    For Cubeast, <a href="https://app.cubeast.com/log/solves">export your solves as a CSV</a> and then <a href="https://app.cubeast.com/exports">download them from Cubeast</a>.
                     <br />
                     <a href="https://app.cubeast.com/exports"><img className="col-8" src={require("../Assets/CubeastDownload.png")}></img></a>
 
                     <br />
                     <br />
 
-                    Finally upload them to Cubeast Analyzer and display your stats!
+                    For Acubemy, export your solves as a CSV from the session view.
+
+                    Finally upload one or more CSV files (from Cubeast and/or Acubemy) to Cubeast Analyzer and display your combined stats!
                     <br />
                     <img className="col-8" src={require("../Assets/AnalyzerSteps.png")}></img>
 

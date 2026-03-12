@@ -3,7 +3,7 @@ import { GetEmptySolve } from "./CubeHelpers";
 import { Solve, CrossColor, MethodName, StepName } from "./Types";
 import moment from 'moment';
 
-export function parseCsv(stringVal: string, splitter: string): Solve[] {
+function parseCubeastCsv(stringVal: string, splitter: string): Solve[] {
     stringVal = stringVal.replace(/(\[.*?\])/g, '');
 
     const [keys, ...rest] = stringVal
@@ -12,7 +12,7 @@ export function parseCsv(stringVal: string, splitter: string): Solve[] {
         .map((item) => item.split(splitter));
 
     const keyMap: { [key: string]: (obj: Solve, value: string) => void } = {
-        "id": (obj, value) => { obj.id = value; },
+        "id": (obj, value) => { obj.id = value; obj.rawSourceId = value; obj.source = 'cubeast'; },
         "time": (obj, value) => { obj.time = Number(value) / 1000; if (obj.time < 1) obj.isCorrupt = true; },
         "date": (obj, value) => { obj.date = moment.utc(value, 'YYYY-MM-DD hh:mm:ss').toDate(); },
         "solution_rotation": (obj, value) => {
@@ -55,6 +55,9 @@ export function parseCsv(stringVal: string, splitter: string): Solve[] {
             }
         });
 
+        obj.source = 'cubeast';
+        obj.rawSource = 'cubeast';
+
         return obj;
     });
 
@@ -63,4 +66,153 @@ export function parseCsv(stringVal: string, splitter: string): Solve[] {
     });
 
     return formedArr;
+}
+
+function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
+    const [keys, ...rows] = stringVal
+        .trim()
+        .split("\n")
+        .map((item) => item.split(splitter));
+
+    const indexOf = (name: string) => keys.indexOf(name);
+
+    const formedArr = rows.map((item) => {
+        const solve = GetEmptySolve();
+
+        const get = (name: string) => {
+            const idx = indexOf(name);
+            return idx >= 0 ? item[idx] : "";
+        };
+
+        const getNumber = (name: string) => {
+            const v = get(name);
+            return v ? Number(v) : 0;
+        };
+
+        solve.source = 'acubemy';
+        solve.rawSource = 'acubemy';
+
+        const solveId = get("solve_id");
+        solve.id = `acubemy-${solveId}`;
+        solve.rawSourceId = solveId;
+
+        const dateStr = get("date");
+        if (dateStr) {
+            solve.date = new Date(dateStr);
+        }
+
+        solve.time = getNumber("total_time") / 1000;
+        if (solve.time < 1) {
+            solve.isCorrupt = true;
+        }
+
+        solve.scramble = get("scramble");
+        solve.tps = getNumber("tps");
+        solve.turns = getNumber("turns");
+
+        solve.session = get("session_name");
+
+        const analysisType = get("analysis_type");
+        if (analysisType && analysisType.toUpperCase().includes("CFOP")) {
+            solve.method = MethodName.CFOP;
+        }
+
+        // aggregate recognition/execution
+        const crossTime = getNumber("cross_time");
+        const crossExec = getNumber("cross_execution_time");
+
+        const f2lTimes = [
+            getNumber("f2l_pair1_time"),
+            getNumber("f2l_pair2_time"),
+            getNumber("f2l_pair3_time"),
+            getNumber("f2l_pair4_time"),
+        ];
+        const f2lExecs = [
+            getNumber("f2l_pair1_execution_time"),
+            getNumber("f2l_pair2_execution_time"),
+            getNumber("f2l_pair3_execution_time"),
+            getNumber("f2l_pair4_execution_time"),
+        ];
+
+        const ollTime = getNumber("oll_time");
+        const ollExec = getNumber("oll_execution_time");
+        const pllTime = getNumber("pll_time");
+        const pllExec = getNumber("pll_execution_time");
+
+        const totalExecMs =
+            crossExec +
+            f2lExecs.reduce((a, b) => a + b, 0) +
+            ollExec +
+            pllExec;
+
+        const totalStepTimeMs =
+            crossTime +
+            f2lTimes.reduce((a, b) => a + b, 0) +
+            ollTime +
+            pllTime;
+
+        solve.executionTime = totalExecMs / 1000;
+        solve.recognitionTime = Math.max(totalStepTimeMs - totalExecMs, 0) / 1000;
+
+        // map steps into existing array
+        const steps = solve.steps;
+
+        const setStep = (
+            index: number,
+            name: StepName,
+            movesField: string,
+            timeField: string,
+            recField: string,
+            execField: string,
+            caseField?: string
+        ) => {
+            const moves = get(movesField);
+            const timeMs = getNumber(timeField);
+            if (!moves && !timeMs) {
+                return;
+            }
+            const recMs = recField ? getNumber(recField) : 0;
+            const execMs = execField ? getNumber(execField) : 0;
+            const s = steps[index];
+            s.name = name;
+            s.moves = moves;
+            s.time = timeMs / 1000;
+            s.recognitionTime = recMs / 1000;
+            s.executionTime = execMs / 1000;
+            if (caseField) {
+                s.case = get(caseField);
+            }
+        };
+
+        setStep(0, StepName.Cross, "cross_moves", "cross_time", "", "cross_execution_time");
+        setStep(1, StepName.F2L_1, "f2l_pair1_moves", "f2l_pair1_time", "f2l_pair1_recognition_time", "f2l_pair1_execution_time");
+        setStep(2, StepName.F2L_2, "f2l_pair2_moves", "f2l_pair2_time", "f2l_pair2_recognition_time", "f2l_pair2_execution_time");
+        setStep(3, StepName.F2L_3, "f2l_pair3_moves", "f2l_pair3_time", "f2l_pair3_recognition_time", "f2l_pair3_execution_time");
+        setStep(4, StepName.F2L_4, "f2l_pair4_moves", "f2l_pair4_time", "f2l_pair4_recognition_time", "f2l_pair4_execution_time");
+        setStep(5, StepName.OLL, "oll_moves", "oll_time", "oll_recognition_time", "oll_execution_time", "oll_case_id");
+        setStep(6, StepName.PLL, "pll_moves", "pll_time", "pll_recognition_time", "pll_execution_time", "pll_case_name");
+
+        return solve;
+    });
+
+    const sorted = formedArr.sort((a: Solve, b: Solve) => {
+        return a.date.getTime() - b.date.getTime();
+    });
+
+    return sorted;
+}
+
+export function parseCsv(stringVal: string, splitter: string): Solve[] {
+    const header = stringVal.trim().split("\n")[0];
+
+    if (header.includes("id,date,dnf,time,solving_method")) {
+        return parseCubeastCsv(stringVal, splitter);
+    }
+
+    if (header.includes("solve_id,date,total_time")) {
+        return parseAcubemyCsv(stringVal, splitter);
+    }
+
+    // default to cubeast parser for backward compatibility
+    return parseCubeastCsv(stringVal, splitter);
 }
