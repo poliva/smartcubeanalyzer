@@ -33,7 +33,8 @@ export function GetEmptySolve() {
         isCorrupt: false,
         method: MethodName.CFOP,
         session: "",
-        isMistake: false
+        isMistake: false,
+        isFullStep: true
     };
 
     return solve;

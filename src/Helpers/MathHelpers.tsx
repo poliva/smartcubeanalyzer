@@ -41,7 +41,7 @@ export function calculate90thPercentile(data: number[], window: number): number 
     })
 
     let idx = Math.floor(.9 * sortedSolves.length); // Find 90th percentile of the window (1-indexed)
-    idx = Math.max(0, idx-1); // 0-indexed
+    idx = Math.max(0, idx - 1); // 0-indexed
 
     return Math.ceil(sortedSolves[idx]);
 }
@@ -149,7 +149,7 @@ export function calculateMovingStdDev(data: number[], window: number) {
             deque.popFront()
         }
         variance += (data[i] - goingAway) * ((data[i] - newMean) + (goingAway - oldMean)) / (window - 1)
-        if (i >= (window-1)) {
+        if (i >= (window - 1)) {
             result.push(Math.sqrt(variance))
         }
     }

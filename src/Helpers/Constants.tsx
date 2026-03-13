@@ -227,4 +227,9 @@ export class Const {
         { label: "Clean", value: "Clean" },
         { label: "Mistake", value: "Mistake" }
     ]
+
+    static readonly solveLuckiness: Option[] = [
+        { label: "FullStep", value: "FullStep" },
+        { label: "Skip", value: "Skip" }
+    ]
 }
