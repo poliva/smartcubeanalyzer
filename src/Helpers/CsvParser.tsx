@@ -141,7 +141,7 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
 
     const indexOf = (name: string) => keys.indexOf(name);
 
-        const formedArr = rows.map((item) => {
+    const formedArr = rows.map((item) => {
         const solve = GetEmptySolve();
 
         const get = (name: string) => {
@@ -207,60 +207,8 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
             }
         }
 
-        // aggregate recognition/execution
-        const crossTime = getNumber("cross_time");
-        const crossExec = getNumber("cross_execution_time");
-
-        const f2lTimes = [
-            getNumber("f2l_pair1_time"),
-            getNumber("f2l_pair2_time"),
-            getNumber("f2l_pair3_time"),
-            getNumber("f2l_pair4_time"),
-        ];
-        const f2lExecs = [
-            getNumber("f2l_pair1_execution_time"),
-            getNumber("f2l_pair2_execution_time"),
-            getNumber("f2l_pair3_execution_time"),
-            getNumber("f2l_pair4_execution_time"),
-        ];
-        const f2lRecs = [
-            getNumber("f2l_pair1_recognition_time"),
-            getNumber("f2l_pair2_recognition_time"),
-            getNumber("f2l_pair3_recognition_time"),
-            getNumber("f2l_pair4_recognition_time"),
-        ];
-
-        const ollTime = getNumber("oll_time");
-        const ollExec = getNumber("oll_execution_time");
-        const ollRec = getNumber("oll_recognition_time");
-        const pllTime = getNumber("pll_time");
-        const pllExec = getNumber("pll_execution_time");
-        const pllRec = getNumber("pll_recognition_time");
-
         const ollCaseRaw = get("oll_case_id");
         const pllCaseRaw = get("pll_case_name");
-
-        const totalExecMs =
-            crossExec +
-            f2lExecs.reduce((a, b) => a + b, 0) +
-            ollExec +
-            pllExec;
-
-        const totalStepTimeMs =
-            crossTime +
-            f2lTimes.reduce((a, b) => a + b, 0) +
-            ollTime +
-            pllTime;
-
-        // Aggregate recognition time: sum the provided step-level recognition
-        // fields when available. Cross recognition is treated as zero.
-        const totalRecMsFromFields =
-            f2lRecs.reduce((a, b) => a + b, 0) +
-            ollRec +
-            pllRec;
-
-        solve.executionTime = totalExecMs / 1000;
-        solve.recognitionTime = totalRecMsFromFields / 1000;
 
         // map steps into existing array
         const steps = solve.steps;
@@ -270,40 +218,38 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
             name: StepName,
             movesField: string,
             timeField: string,
-            recField: string,
-            execField: string,
             caseField?: string
         ) => {
             const moves = get(movesField);
-            const timeMs = getNumber(timeField);
-            if (!moves && !timeMs) {
+            // Presence of a step is determined by moves; we do not trust or use
+            // Acubemy's per-step time fields for timing and will recompute
+            // timings from `solution` + `move_times` instead.
+            if (!moves) {
                 return;
             }
-            const recMs = recField ? getNumber(recField) : 0;
-            const execMs = execField ? getNumber(execField) : 0;
             const s = steps[index];
             s.name = name;
             s.moves = moves;
-            s.time = timeMs / 1000;
-            s.recognitionTime = recMs / 1000;
-            s.executionTime = execMs / 1000;
+            // Step recognition/execution/time will be fully recomputed later
+            // from `solution` + `move_times`, so initialize them to zero here.
+            s.time = 0;
+            s.recognitionTime = 0;
+            s.executionTime = 0;
             // Count turns from move tokens, excluding rotations.
             s.turns = countNonRotationMoves(moves);
-            if (s.time > 0) {
-                s.tps = s.turns / s.time;
-            }
+            // tps will also be recomputed once final step time is known.
             if (caseField) {
                 s.case = get(caseField);
             }
         };
 
-        setStep(0, StepName.Cross, "cross_moves", "cross_time", "", "cross_execution_time");
-        setStep(1, StepName.F2L_1, "f2l_pair1_moves", "f2l_pair1_time", "f2l_pair1_recognition_time", "f2l_pair1_execution_time");
-        setStep(2, StepName.F2L_2, "f2l_pair2_moves", "f2l_pair2_time", "f2l_pair2_recognition_time", "f2l_pair2_execution_time");
-        setStep(3, StepName.F2L_3, "f2l_pair3_moves", "f2l_pair3_time", "f2l_pair3_recognition_time", "f2l_pair3_execution_time");
-        setStep(4, StepName.F2L_4, "f2l_pair4_moves", "f2l_pair4_time", "f2l_pair4_recognition_time", "f2l_pair4_execution_time");
-        setStep(5, StepName.OLL, "oll_moves", "oll_time", "oll_recognition_time", "oll_execution_time", "oll_case_id");
-        setStep(6, StepName.PLL, "pll_moves", "pll_time", "pll_recognition_time", "pll_execution_time", "pll_case_name");
+        setStep(0, StepName.Cross, "cross_moves", "cross_time");
+        setStep(1, StepName.F2L_1, "f2l_pair1_moves", "f2l_pair1_time");
+        setStep(2, StepName.F2L_2, "f2l_pair2_moves", "f2l_pair2_time");
+        setStep(3, StepName.F2L_3, "f2l_pair3_moves", "f2l_pair3_time");
+        setStep(4, StepName.F2L_4, "f2l_pair4_moves", "f2l_pair4_time");
+        setStep(5, StepName.OLL, "oll_moves", "oll_time", "oll_case_id");
+        setStep(6, StepName.PLL, "pll_moves", "pll_time", "pll_case_name");
 
         // Normalize Acubemy OLL/PLL skip encodings to the shared "Solved" case label,
         // so they behave like Cubeast data in filters and charts.
