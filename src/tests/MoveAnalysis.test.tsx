@@ -1,0 +1,189 @@
+import { describe, expect, test } from '@jest/globals';
+import { analyzeStepMoves, computeCaseFailureStats, computeAufInefficiency, computeSolveEfficiency } from '../Helpers/MoveAnalysis';
+import { GetEmptySolve, GetEmptyStep } from '../Helpers/CubeHelpers';
+import { StepName } from '../Helpers/Types';
+
+describe('analyzeStepMoves', () => {
+    test('empty string returns zeroes', () => {
+        const result = analyzeStepMoves("");
+        expect(result).toEqual({ originalTurns: 0, simplifiedTurns: 0, wastedMoves: 0, redundantPairs: [] });
+    });
+
+    test('U followed by U\' cancels completely', () => {
+        const result = analyzeStepMoves("U U'");
+        expect(result.wastedMoves).toBe(2);
+        expect(result.simplifiedTurns).toBe(0);
+        expect(result.redundantPairs).toHaveLength(1);
+        expect(result.redundantPairs[0].moves).toBe("U U'");
+    });
+
+    test('U U merges to U2 (no waste in slice-turn metric)', () => {
+        const result = analyzeStepMoves("U U");
+        expect(result.originalTurns).toBe(2);
+        expect(result.simplifiedTurns).toBe(1);
+        expect(result.wastedMoves).toBe(1);
+    });
+
+    test('U U U merges to U\' (single turn)', () => {
+        const result = analyzeStepMoves("U U U");
+        expect(result.originalTurns).toBe(3);
+        expect(result.simplifiedTurns).toBe(1);
+        expect(result.wastedMoves).toBe(2);
+    });
+
+    test('U U U U cancels to identity', () => {
+        const result = analyzeStepMoves("U U U U");
+        expect(result.simplifiedTurns).toBe(0);
+        expect(result.wastedMoves).toBe(4);
+    });
+
+    test('U2 followed by U2 cancels', () => {
+        const result = analyzeStepMoves("U2 U2");
+        expect(result.simplifiedTurns).toBe(0);
+        expect(result.wastedMoves).toBe(2);
+    });
+
+    test('R U R\' has no cancellation', () => {
+        const result = analyzeStepMoves("R U R'");
+        expect(result.wastedMoves).toBe(0);
+        expect(result.simplifiedTurns).toBe(3);
+        expect(result.redundantPairs).toHaveLength(0);
+    });
+
+    test('R R\' U cancels R R\' but leaves U', () => {
+        const result = analyzeStepMoves("R R' U");
+        expect(result.simplifiedTurns).toBe(1);
+        expect(result.wastedMoves).toBe(2);
+        expect(result.redundantPairs).toHaveLength(1);
+    });
+
+    test('does not cancel across different faces', () => {
+        const result = analyzeStepMoves("R U R U");
+        expect(result.wastedMoves).toBe(0);
+        expect(result.simplifiedTurns).toBe(4);
+    });
+
+    test('handles U3 as equivalent to U\'', () => {
+        const result = analyzeStepMoves("U U3");
+        expect(result.simplifiedTurns).toBe(0);
+        expect(result.wastedMoves).toBe(2);
+    });
+
+    test('complex real algorithm has no waste', () => {
+        const result = analyzeStepMoves("R U R' U' R' F R F'");
+        expect(result.wastedMoves).toBe(0);
+    });
+
+    test('algorithm with redundancy at end', () => {
+        const result = analyzeStepMoves("R U R' F F'");
+        expect(result.wastedMoves).toBe(2);
+        expect(result.simplifiedTurns).toBe(3);
+    });
+});
+
+describe('computeAufInefficiency', () => {
+    test('step with no moves returns zeroes', () => {
+        const step = { ...GetEmptyStep(), moves: "" };
+        const result = computeAufInefficiency(step);
+        expect(result.preAufMoves).toBe(0);
+        expect(result.postAufMoves).toBe(0);
+        expect(result.isHighCost).toBe(false);
+    });
+
+    test('step with leading and trailing AUF', () => {
+        const step = { ...GetEmptyStep(), moves: "U R U R' U'", preAufTime: 0.1, postAufTime: 0.1 };
+        const result = computeAufInefficiency(step);
+        expect(result.preAufMoves).toBe(1);
+        expect(result.postAufMoves).toBe(1);
+        expect(result.isHighCost).toBe(false);
+    });
+
+    test('step with high AUF time is flagged', () => {
+        const step = { ...GetEmptyStep(), moves: "U R U R' U'", preAufTime: 0.3, postAufTime: 0.3 };
+        const result = computeAufInefficiency(step);
+        expect(result.totalAufTime).toBeCloseTo(0.6);
+        expect(result.isHighCost).toBe(true);
+    });
+
+    test('step with many AUF moves is flagged', () => {
+        const step = { ...GetEmptyStep(), moves: "U U2 R U R' U'", preAufTime: 0.1, postAufTime: 0.1 };
+        const result = computeAufInefficiency(step);
+        expect(result.preAufMoves).toBe(2);
+        expect(result.postAufMoves).toBe(1);
+        expect(result.isHighCost).toBe(true);
+    });
+});
+
+describe('computeCaseFailureStats', () => {
+    function makeSolveWithPll(id: string, caseName: string, moves: string, turns: number) {
+        const solve = GetEmptySolve();
+        solve.id = id;
+        solve.steps[6] = { ...GetEmptyStep(), name: StepName.PLL, case: caseName, moves, turns };
+        return solve;
+    }
+
+    test('groups by case and computes stats', () => {
+        const normalAlg = "U R U' R' U' F R2 U' R' U' R U R' F' U'";
+        const failedAlg = "U R U' R' U' F R2 U' R' U' R U R' F' U2 R U' R' U' F R2 U' R' U' R U R' F' U'";
+        const solves = [
+            makeSolveWithPll("1", "T", normalAlg, 14),
+            makeSolveWithPll("2", "T", normalAlg, 14),
+            makeSolveWithPll("3", "T", normalAlg, 14),
+            makeSolveWithPll("4", "T", normalAlg, 14),
+            makeSolveWithPll("5", "T", normalAlg, 14),
+            makeSolveWithPll("6", "T", normalAlg, 14),
+            makeSolveWithPll("7", "T", normalAlg, 14),
+            makeSolveWithPll("8", "T", normalAlg, 14),
+            makeSolveWithPll("9", "T", normalAlg, 14),
+            makeSolveWithPll("10", "T", normalAlg, 14),
+            makeSolveWithPll("11", "T", failedAlg, 28),
+        ];
+
+        const stats = computeCaseFailureStats(solves, 6);
+        const tCase = stats.find(s => s.caseName === "T");
+        expect(tCase).toBeDefined();
+        expect(tCase!.totalCount).toBe(11);
+        expect(tCase!.failureCount).toBeGreaterThanOrEqual(1);
+        expect(tCase!.failureRate).toBeGreaterThan(0);
+    });
+
+    test('skips Solved cases', () => {
+        const solves = [
+            makeSolveWithPll("1", "Solved", "U'", 1),
+            makeSolveWithPll("2", "T", "R U R'", 3),
+        ];
+
+        const stats = computeCaseFailureStats(solves, 6);
+        expect(stats.find(s => s.caseName === "Solved")).toBeUndefined();
+        expect(stats.find(s => s.caseName === "T")).toBeDefined();
+    });
+
+    test('returns empty for no solves', () => {
+        const stats = computeCaseFailureStats([], 6);
+        expect(stats).toEqual([]);
+    });
+});
+
+describe('computeSolveEfficiency', () => {
+    test('solve with no moves has efficiency 1', () => {
+        const solve = GetEmptySolve();
+        const result = computeSolveEfficiency(solve);
+        expect(result.moveEfficiency).toBe(1);
+        expect(result.hadOllFailure).toBe(false);
+        expect(result.hadPllFailure).toBe(false);
+    });
+
+    test('solve with redundant moves has efficiency < 1', () => {
+        const solve = GetEmptySolve();
+        solve.steps[0] = { ...GetEmptyStep(), moves: "R R' U R U'" };
+        const result = computeSolveEfficiency(solve);
+        expect(result.moveEfficiency).toBeLessThan(1);
+    });
+
+    test('solve with clean moves has efficiency 1', () => {
+        const solve = GetEmptySolve();
+        solve.steps[0] = { ...GetEmptyStep(), moves: "R U R' U'" };
+        const result = computeSolveEfficiency(solve);
+        expect(result.moveEfficiency).toBe(1);
+    });
+});

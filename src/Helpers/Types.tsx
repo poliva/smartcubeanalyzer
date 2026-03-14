@@ -231,3 +231,39 @@ export interface StreakData {
     longestStreak: number,
     currentStreak: number,
 }
+
+export interface RedundantPair {
+    startIdx: number,
+    endIdx: number,
+    moves: string
+}
+
+export interface MoveAnalysisResult {
+    originalTurns: number,
+    simplifiedTurns: number,
+    wastedMoves: number,
+    redundantPairs: RedundantPair[]
+}
+
+export interface CaseStats {
+    caseName: string,
+    totalCount: number,
+    failureCount: number,
+    failureRate: number,
+    avgMoves: number,
+    expectedMoves: number,
+    instances: { solveId: string; turns: number; failed: boolean }[]
+}
+
+export interface AufInefficiency {
+    preAufMoves: number,
+    postAufMoves: number,
+    totalAufTime: number,
+    isHighCost: boolean
+}
+
+export interface SolveEfficiency {
+    moveEfficiency: number,
+    hadOllFailure: boolean,
+    hadPllFailure: boolean
+}

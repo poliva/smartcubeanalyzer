@@ -3,7 +3,7 @@ import { GetEmptySolve } from "./CubeHelpers";
 import { Solve, CrossColor, MethodName, StepName } from "./Types";
 import moment from 'moment';
 
-const AUF_MOVES = new Set(['U', "U'", 'U2', "U2'", "U3", "U3'"]);
+export const AUF_MOVES = new Set(['U', "U'", 'U2', "U2'", "U3", "U3'"]);
 const ROTATIONS = new Set([
     "x", "x'", "x2",
     "y", "y'", "y2",
@@ -142,7 +142,7 @@ function normalizeMovesString(raw: string | undefined | null): string {
     return withoutQuotes.trim();
 }
 
-function tokenizeMoves(raw: string | undefined | null): string[] {
+export function tokenizeMoves(raw: string | undefined | null): string[] {
     const normalized = normalizeMovesString(raw);
     if (!normalized) return [];
     return normalized
@@ -225,6 +225,7 @@ function parseCubeastCsv(stringVal: string, splitter: string): Solve[] {
                 const coreExec = seg.coreExecution;
                 step.executionTime = seg.preAuf + coreExec + seg.postAuf;
                 step.time = step.recognitionTime + step.executionTime;
+                step.moves = moveTimings.map((m) => m.move).join(" ");
                 if (moveTimings.length > 0) {
                     prevEndTsMs = moveTimings[moveTimings.length - 1].timestamp;
                 }
