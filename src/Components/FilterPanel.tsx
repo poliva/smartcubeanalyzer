@@ -59,7 +59,8 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         badTime: 20,
         goodTime: 15,
         method: { label: MethodName.CFOP, value: MethodName.CFOP },
-        useLogScale: false
+        useLogScale: false,
+        use4SegmentTiming: true
     }
 
     static passesFilters(solve: Solve, filters: Filters) {
@@ -211,7 +212,8 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             solveLuckiness: prevState.solveLuckiness,
             badTime: prevState.badTime,
             goodTime: prevState.goodTime,
-            useLogScale: prevState.useLogScale
+            useLogScale: prevState.useLogScale,
+            use4SegmentTiming: prevState.use4SegmentTiming
         }
 
         // Update anything that needs it
@@ -393,6 +395,10 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         this.setState({ useLogScale: checked });
     }
 
+    setUse4SegmentTiming(checked: boolean) {
+        this.setState({ use4SegmentTiming: checked });
+    }
+
     setCleanliness(selectedList: any[]) {
         let newFilters: Filters = this.state.filters;
         newFilters.solveCleanliness = selectedList.map(x => x.value);
@@ -446,6 +452,8 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
 
             const stepExecutionTime = newSteps.reduce((sum, current) => sum + current.executionTime, 0);
             const stepRecognitionTime = newSteps.reduce((sum, current) => sum + current.recognitionTime, 0);
+            const stepPreAufTime = newSteps.reduce((sum, current) => sum + current.preAufTime, 0);
+            const stepPostAufTime = newSteps.reduce((sum, current) => sum + current.postAufTime, 0);
             const stepTime = newSteps.reduce((sum, current) => sum + current.time, 0);
             const stepTurns = newSteps.reduce((sum, current) => sum + current.turns, 0);
 
@@ -473,6 +481,8 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                 inspectionTime: solve.inspectionTime,
                 recognitionTime: stepRecognitionTime,
                 executionTime: stepExecutionTime,
+                preAufTime: stepPreAufTime,
+                postAufTime: stepPostAufTime,
                 turns: turns,
                 steps: newSteps,
                 isCorrupt: solve.isCorrupt,
@@ -676,6 +686,12 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                     )}
 
                     {this.createFilterHtml(
+                        <ReactSwitch id="use4SegmentTiming" checked={this.state.use4SegmentTiming} onChange={this.setUse4SegmentTiming.bind(this)} />,
+                        "4-Segment Timing",
+                        "Show recognition, pre-AUF, execution, and post-AUF as separate segments in timing charts. When off, shows only recognition and execution."
+                    )}
+
+                    {this.createFilterHtml(
                         <div className="row">
                             <div className="form-outline col-6" >
                                 <FormControl min="0" max="300" type="number" id="goodTime" value={this.state.goodTime} onChange={this.setGoodTime.bind(this)} />
@@ -741,6 +757,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                                 badTime={this.state.badTime}
                                 steps={this.state.filters.steps}
                                 useLogScale={this.state.useLogScale}
+                                use4SegmentTiming={this.state.use4SegmentTiming}
                             />
                         </Col>
                     </Row>

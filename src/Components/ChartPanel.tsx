@@ -138,31 +138,43 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
     }
 
     buildRunningRecognitionExecution() {
+        const colors = {
+            recognition: 'rgb(54, 162, 235)',
+            preAuf: 'rgb(153, 102, 255)',
+            execution: 'rgb(255, 99, 132)',
+            postAuf: 'rgb(255, 159, 64)',
+        };
         let movingRecognition = calculateMovingAverage(this.props.solves.map(x => x.recognitionTime), this.props.windowSize);
-        let movingExecution = calculateMovingAverage(this.props.solves.map(x => x.executionTime), this.props.windowSize);
-
         let labels = [];
         for (let i = 1; i <= movingRecognition.length; i++) {
-            labels.push(i.toString())
-        };
-
-        movingExecution = reduceDataset(movingExecution, this.props.pointsPerGraph);
+            labels.push(i.toString());
+        }
         movingRecognition = reduceDataset(movingRecognition, this.props.pointsPerGraph);
         labels = reduceDataset(labels, this.props.pointsPerGraph);
 
-        let data: ChartData<"line"> = {
-            labels,
-            datasets: [{
-                label: `Average Recognition Of ${this.props.windowSize}`,
-                data: movingRecognition
-            },
-            {
-                label: `Average Execution Of ${this.props.windowSize}`,
-                data: movingExecution
-            }]
+        if (this.props.use4SegmentTiming) {
+            const movingPreAuf = reduceDataset(calculateMovingAverage(this.props.solves.map(x => x.preAufTime), this.props.windowSize), this.props.pointsPerGraph);
+            const movingCoreExec = reduceDataset(calculateMovingAverage(this.props.solves.map(x => x.executionTime - x.preAufTime - x.postAufTime), this.props.windowSize), this.props.pointsPerGraph);
+            const movingPostAuf = reduceDataset(calculateMovingAverage(this.props.solves.map(x => x.postAufTime), this.props.windowSize), this.props.pointsPerGraph);
+            return {
+                labels,
+                datasets: [
+                    { label: `Average Recognition Of ${this.props.windowSize}`, data: movingRecognition, borderColor: colors.recognition, backgroundColor: colors.recognition },
+                    { label: `Average Pre-AUF Of ${this.props.windowSize}`, data: movingPreAuf, borderColor: colors.preAuf, backgroundColor: colors.preAuf },
+                    { label: `Average Execution Of ${this.props.windowSize}`, data: movingCoreExec, borderColor: colors.execution, backgroundColor: colors.execution },
+                    { label: `Average Post-AUF Of ${this.props.windowSize}`, data: movingPostAuf, borderColor: colors.postAuf, backgroundColor: colors.postAuf },
+                ],
+            } as ChartData<"line">;
         }
 
-        return data;
+        let movingExecution = reduceDataset(calculateMovingAverage(this.props.solves.map(x => x.executionTime), this.props.windowSize), this.props.pointsPerGraph);
+        return {
+            labels,
+            datasets: [
+                { label: `Average Recognition Of ${this.props.windowSize}`, data: movingRecognition, borderColor: colors.recognition, backgroundColor: colors.recognition },
+                { label: `Average Execution Of ${this.props.windowSize}`, data: movingExecution, borderColor: colors.execution, backgroundColor: colors.execution },
+            ],
+        } as ChartData<"line">;
     }
 
     isPreviousDay(date1: Date, date2: Date): boolean {
@@ -740,62 +752,64 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
     }
 
     buildCaseData() {
+        const colors = {
+            recognition: 'rgb(54, 162, 235)',
+            preAuf: 'rgb(153, 102, 255)',
+            execution: 'rgb(255, 99, 132)',
+            postAuf: 'rgb(255, 159, 64)',
+        };
         if (this.props.steps.length != 1 || (this.props.steps[0] !== StepName.OLL && this.props.steps[0] !== StepName.PLL)) {
-            let data: ChartData<"bar"> = {
-                labels: [],
-                datasets: []
-            }
-            return data;
+            return { labels: [], datasets: [] } as ChartData<"bar">;
         }
 
         let solves = this.props.solves.slice(-this.props.windowSize);
-
-        let caseTimes: { [id: string]: { recognitionTime: number, executionTime: number }[] } = {};
+        type CaseRow = { recognitionTime: number; executionTime: number; preAufTime: number; postAufTime: number };
+        let caseTimes: { [id: string]: CaseRow[] } = {};
         for (let i = 0; i < solves.length; i++) {
-            if (!(solves[i].steps[0].case in caseTimes)) {
-                caseTimes[solves[i].steps[0].case] = [];
-            }
-            caseTimes[solves[i].steps[0].case].push({
-                recognitionTime: solves[i].recognitionTime,
-                executionTime: solves[i].executionTime
+            const s = solves[i];
+            if (!(s.steps[0].case in caseTimes)) caseTimes[s.steps[0].case] = [];
+            caseTimes[s.steps[0].case].push({
+                recognitionTime: s.recognitionTime,
+                executionTime: s.executionTime - s.preAufTime - s.postAufTime,
+                preAufTime: s.preAufTime,
+                postAufTime: s.postAufTime,
             });
         }
 
-        let cases: { label: string, recognitionTime: number, executionTime: number }[] = []
-        for (let key in caseTimes) {
-            let recognitionTimes = caseTimes[key].map(x => x.recognitionTime);
-            let executionTimes = caseTimes[key].map(x => x.executionTime);
-
-            let averageRecognition: number = recognitionTimes.reduce((a, b) => a + b) / recognitionTimes.length;
-            let averageExecution: number = executionTimes.reduce((a, b) => a + b) / executionTimes.length;
-
+        let cases: { label: string; recognitionTime: number; executionTime: number; preAufTime: number; postAufTime: number }[] = [];
+        for (const key in caseTimes) {
+            const rows = caseTimes[key];
             cases.push({
                 label: key,
-                executionTime: averageExecution,
-                recognitionTime: averageRecognition
-            })
+                recognitionTime: rows.reduce((a, r) => a + r.recognitionTime, 0) / rows.length,
+                executionTime: rows.reduce((a, r) => a + r.executionTime, 0) / rows.length,
+                preAufTime: rows.reduce((a, r) => a + r.preAufTime, 0) / rows.length,
+                postAufTime: rows.reduce((a, r) => a + r.postAufTime, 0) / rows.length,
+            });
         }
+        cases.sort((a, b) => (b.recognitionTime + b.preAufTime + b.executionTime + b.postAufTime) - (a.recognitionTime + a.preAufTime + a.executionTime + a.postAufTime));
 
-        cases.sort((a, b) => {
-            return (b.recognitionTime + b.executionTime) - (a.recognitionTime + a.executionTime);
-        })
-
-        let labels = cases.map(x => "Case: " + x.label);
-        let recognitionValues = cases.map(x => x.recognitionTime)
-        let executionValues = cases.map(x => x.executionTime)
-
-        let data: ChartData<"bar"> = {
-            labels: labels,
-            datasets: [{
-                label: `Average recognition time for each case in past ${this.props.windowSize} solves`,
-                data: recognitionValues
-            }, {
-                label: `Average execution time for each case in past ${this.props.windowSize} solves`,
-                data: executionValues
-            }]
+        const labels = cases.map(x => "Case: " + x.label);
+        if (this.props.use4SegmentTiming) {
+            return {
+                labels,
+                datasets: [
+                    { label: `Recognition (past ${this.props.windowSize})`, data: cases.map(x => x.recognitionTime), backgroundColor: colors.recognition },
+                    { label: `Pre-AUF (past ${this.props.windowSize})`, data: cases.map(x => x.preAufTime), backgroundColor: colors.preAuf },
+                    { label: `Execution (past ${this.props.windowSize})`, data: cases.map(x => x.executionTime), backgroundColor: colors.execution },
+                    { label: `Post-AUF (past ${this.props.windowSize})`, data: cases.map(x => x.postAufTime), backgroundColor: colors.postAuf },
+                ],
+            } as ChartData<"bar">;
         }
-
-        return data;
+        const recognitionValues = cases.map(x => x.recognitionTime);
+        const executionValues = cases.map(x => x.preAufTime + x.executionTime + x.postAufTime);
+        return {
+            labels,
+            datasets: [
+                { label: `Average recognition time for each case in past ${this.props.windowSize} solves`, data: recognitionValues, backgroundColor: colors.recognition },
+                { label: `Average execution time for each case in past ${this.props.windowSize} solves`, data: executionValues, backgroundColor: colors.execution },
+            ],
+        } as ChartData<"bar">;
     }
 
     buildBestSolves() {

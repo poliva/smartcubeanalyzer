@@ -90,6 +90,8 @@ export interface Step {
     time: number,
     executionTime: number,
     recognitionTime: number,
+    preAufTime: number,
+    postAufTime: number,
     turns: number,
     tps: number,
     moves: string,
@@ -110,6 +112,8 @@ export interface Solve {
     inspectionTime: number,
     recognitionTime: number,
     executionTime: number,
+    preAufTime: number,
+    postAufTime: number,
     turns: number,
     steps: Step[],
     isCorrupt: boolean,
@@ -149,7 +153,8 @@ export interface FilterPanelState {
     badTime: number,
     goodTime: number,
     method: Option,
-    useLogScale: boolean
+    useLogScale: boolean,
+    use4SegmentTiming: boolean
 }
 
 export interface FileInputProps {
@@ -169,7 +174,8 @@ export interface ChartPanelProps {
     goodTime: number,
     methodName: MethodName,
     steps: StepName[],
-    useLogScale: boolean
+    useLogScale: boolean,
+    use4SegmentTiming: boolean
 }
 
 export interface ChartPanelState {
