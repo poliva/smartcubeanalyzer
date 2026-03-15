@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
-import { parseCsv } from '../Helpers/CsvParser';
-import { Solve } from '../Helpers/Types';
+import { parseCsv, computeStepSegments } from '../Helpers/CsvParser';
+import { Solve, StepName } from '../Helpers/Types';
 
 const cubeastSample = `id,date,dnf,time,solving_method,device_name,device_model,device_color_scheme,user,one_turn_away_two_second_penalty,inspection_two_second_penalty,inspection_time,timer_time,missing_turn,solution,timer,description,session_name,session_ruleset,scramble,scramble_provider,ruleset,share_views,share_likes,share_comments,analysis_version,solution_rotation,pickup_time,putdown_time,solving_time,slice_turns,face_turns,quarter_turns,turns_per_second,total_recognition_time,total_execution_time,turns_after_solution,steps_skipped,step_0_name,step_0_moves,step_0_recorded_moves,step_0_skipped,step_0_has_turns,step_0_time,step_0_recognition_time,step_0_execution_time,step_0_cumulative_time,step_0_slice_turns,step_0_face_turns,step_0_quarter_turns,step_0_turns_per_second,step_1_name,step_1_moves,step_1_recorded_moves,step_1_skipped,step_1_has_turns,step_1_time,step_1_recognition_time,step_1_execution_time,step_1_cumulative_time,step_1_slice_turns,step_1_face_turns,step_1_quarter_turns,step_1_turns_per_second,step_2_name,step_2_moves,step_2_recorded_moves,step_2_skipped,step_2_has_turns,step_2_time,step_2_recognition_time,step_2_execution_time,step_2_cumulative_time,step_2_slice_turns,step_2_face_turns,step_2_quarter_turns,step_2_turns_per_second,step_3_name,step_3_moves,step_3_recorded_moves,step_3_skipped,step_3_has_turns,step_3_time,step_3_recognition_time,step_3_execution_time,step_3_cumulative_time,step_3_slice_turns,step_3_face_turns,step_3_quarter_turns,step_3_turns_per_second,step_4_name,step_4_moves,step_4_recorded_moves,step_4_skipped,step_4_has_turns,step_4_time,step_4_recognition_time,step_4_execution_time,step_4_cumulative_time,step_4_slice_turns,step_4_face_turns,step_4_quarter_turns,step_4_turns_per_second,step_5_name,step_5_moves,step_5_recorded_moves,step_5_skipped,step_5_has_turns,step_5_time,step_5_recognition_time,step_5_execution_time,step_5_cumulative_time,step_5_slice_turns,step_5_face_turns,step_5_quarter_turns,step_5_turns_per_second,step_6_name,step_6_moves,step_6_recorded_moves,step_6_skipped,step_6_has_turns,step_6_time,step_6_recognition_time,step_6_execution_time,step_6_cumulative_time,step_6_slice_turns,step_6_face_turns,step_6_quarter_turns,step_6_turns_per_second,step_7_name,step_7_moves,step_7_recorded_moves,step_7_skipped,step_7_has_turns,step_7_time,step_7_recognition_time,step_7_execution_time,step_7_cumulative_time,step_7_slice_turns,step_7_face_turns,step_7_quarter_turns,step_7_turns_per_second,step_8_name,step_8_moves,step_8_recorded_moves,step_8_skipped,step_8_has_turns,step_8_time,step_8_recognition_time,step_8_execution_time,step_8_cumulative_time,step_8_slice_turns,step_8_face_turns,step_8_quarter_turns,step_8_turns_per_second,step_0_case,step_1_case,step_2_case,step_3_case,step_4_case,step_5_case,step_6_case,step_7_case,step_8_case
 7d11ba20-55d3-489f-a075-6298f216367d,2026-01-05 15:09:52 UTC,false,25755,CFOP,12uiFp-pof,Gan 12 UI FreePlay,Gan 356i,Pau,false,false,23424,25755,,U'[0] B[172] R[529] B[953] L[1730] F[2214] D'[2461] L[2795] D'[3226] U'[5452] U[5831] R'[6309] U[6432] R[6560] U'[6825] F[7047] U[7234] F'[7404] U'[9527] U'[9633] R[10188] U'[10348] R'[10465] R'[10681] U[10838] R[10968] L[12441] U[12631] L'[12718] B'[14048] U[14147] U[14239] B[14500] U'[14834] U'[14919] B'[15029] U[15156] B[15280] U'[17033] R[17319] U[17498] R'[17600] U'[17739] R[17811] U[17950] R'[18054] R'[19873] F[20055] R[20302] R'[20584] R[20649] U[20749] R'[20926] F'[21160] R[21327] F[21619] U'[21920] F'[22098] U[22721] R'[23365] R'[23518] F[23664] R[23767] U[23907] R[24018] U'[24150] R'[24271] F'[24473] R[24666] U'[24830] U'[24917] R'[25013] U[25226] U[25320] R[25755],,,PAU-2026-01,custom_rules,D2 B' U D2 B D F' D' R L U2 L2 D' R2 U2 B2 U' B2 U B2 U2 L2,random_state,custom_rules,,,,8,UF,0,0,25755,68,68,75,2.64,12618,13137,"",0,Cross,U' B R B L F D' L D',U'[0] B[172] R[529] B[953] L[1730] F[2214] D'[2461] L[2795] D'[3226],false,true,3226,0,3226,3226,9,9,9,2.79,F2L Slot 1,U' U R' U R U' F U F',U'[5452] U[5831] R'[6309] U[6432] R[6560] U'[6825] F[7047] U[7234] F'[7404],false,true,4178,3083,1095,7404,9,9,9,8.22,F2L Slot 2,U2' R U' R2' U R,U2'[9633] R[10188] U'[10348] R2'[10681] U[10838] R[10968],false,true,3564,2784,780,10968,6,6,8,7.69,F2L Slot 3,L U L' B' U2 B U2' B' U B,L[12441] U[12631] L'[12718] B'[14048] U2[14239] B[14500] U2'[14919] B'[15029] U[15156] B[15280],false,true,4312,1473,2839,15280,10,10,12,3.52,F2L Slot 4,U' R U R' U' R U R',U'[17033] R[17319] U[17498] R'[17600] U'[17739] R[17811] U[17950] R'[18054],false,true,2774,2039,735,18054,8,8,8,10.88,OLL,R' F R R' R U R' F' R F U' F',R'[19873] F[20055] R[20302] R'[20584] R[20649] U[20749] R'[20926] F'[21160] R[21327] F[21619] U'[21920] F'[22098],false,true,4044,1819,2225,22098,12,12,12,5.39,PLL,U R2' F R U R U' R' F' R U2' R' U2 R,U[22721] R2'[23518] F[23664] R[23767] U[23907] R[24018] U'[24150] R'[24271] F'[24473] R[24666] U2'[24917] R'[25013] U2[25320] R[25755],false,true,3657,1420,2237,25755,14,14,17,6.26,,,,,,,,,,,,,,,,,,,,,,,,,,,,113,BL->FR 91,"[FL,BR]->FR 30",27,14,Rb,,`
@@ -24,9 +24,10 @@ describe('CsvParser', () => {
         const solves: Solve[] = parseCsv(cubeastSample, ',');
         expect(solves.length).toBe(1);
         const solve = solves[0];
-        // F2L Slot 1 has leading U'[5452] U[5831] R'[6309] -> AUF duration = 6309 - 5452 = 857 ms
+        // F2L Slot 1 has leading U'[5452] U[5831] R'[6309] -> preAUF = 6309 - 5452 = 857 ms
         const step1 = solve.steps[1];
         expect(step1.name).toBe('F2L Slot 1');
+        expect(step1.preAufTime).toBeCloseTo(0.857, 3);
         expect(step1.recognitionTime).toBeCloseTo(3.083 - 0.857, 3); // was 3083 ms
         expect(step1.executionTime).toBeCloseTo(1.095 + 0.857, 3);   // was 1095 ms
         // Solve totals are recomputed from adjusted steps
@@ -132,8 +133,8 @@ describe('CsvParser', () => {
         // 4000: U'  (F2L1 first non-rotation)
         // 5000: L'  (F2L1 last non-rotation)
 
-        // Cross: recognition from 0 -> 1000, execution from 1000 -> 2000.
-        expect(cross.recognitionTime).toBeCloseTo(1.0, 5);
+        // Cross: no recognition (happens at solve start); execution is full step 1000 -> 2000 = 1.0s.
+        expect(cross.recognitionTime).toBeCloseTo(0, 5);
         expect(cross.executionTime).toBeCloseTo(1.0, 5);
 
         // F2L1: recognition from previous step's last non-rotation (2000) to first non-rotation (4000),
@@ -164,6 +165,67 @@ describe('CsvParser', () => {
 
         // PLL skip: Acubemy encodes pll_case_name as "Unknown"; treat as "Solved"
         expect(solve.steps[6].case).toBe('Solved');
+    });
+
+    test('Cubeast 4-segment timing: Cross has no recognition/preAuf/postAuf', () => {
+        const solves: Solve[] = parseCsv(cubeastSample, ',');
+        const cross = solves[0].steps[0];
+        expect(cross.name).toBe('Cross');
+        expect(cross.recognitionTime).toBeCloseTo(0, 3);
+        expect(cross.preAufTime).toBeCloseTo(0, 3);
+        expect(cross.postAufTime).toBeCloseTo(0, 3);
+        expect(cross.executionTime).toBeCloseTo(3.226, 3);
+    });
+
+    test('Cubeast 4-segment timing: F2L has preAuf, no postAuf', () => {
+        const solves: Solve[] = parseCsv(cubeastSample, ',');
+        const f2l1 = solves[0].steps[1];
+        expect(f2l1.name).toBe('F2L Slot 1');
+        expect(f2l1.preAufTime).toBeGreaterThan(0);
+        expect(f2l1.postAufTime).toBeCloseTo(0, 3);
+    });
+
+    test('Cubeast 4-segment timing: PLL has preAuf; postAuf when trailing U moves', () => {
+        const solves: Solve[] = parseCsv(cubeastSample, ',');
+        const pll = solves[0].steps[6];
+        expect(pll.name).toBe('PLL');
+        expect(pll.preAufTime).toBeGreaterThan(0);
+        // Sample PLL ends with R[25755] so no trailing U -> postAuf 0
+        expect(pll.postAufTime).toBeCloseTo(0, 3);
+    });
+
+    test('Cubeast step executionTime equals preAufTime + coreExecution + postAufTime', () => {
+        const solves: Solve[] = parseCsv(cubeastSample, ',');
+        const solve = solves[0];
+        for (const step of solve.steps) {
+            const coreExec = Math.max(0, step.executionTime - step.preAufTime - step.postAufTime);
+            expect(step.preAufTime + coreExec + step.postAufTime).toBeCloseTo(step.executionTime, 5);
+        }
+    });
+
+    test('Acubemy 4-segment: solve has preAufTime and postAufTime summed from steps', () => {
+        const solves: Solve[] = parseCsv(acubemySample, ',');
+        const solve = solves[0];
+        const sumPre = solve.steps.reduce((s, st) => s + st.preAufTime, 0);
+        const sumPost = solve.steps.reduce((s, st) => s + st.postAufTime, 0);
+        expect(solve.preAufTime).toBeCloseTo(sumPre, 3);
+        expect(solve.postAufTime).toBeCloseTo(sumPost, 3);
+    });
+
+    test('Acubemy PLL with trailing U moves has postAufTime > 0', () => {
+        const solves: Solve[] = parseCsv(acubemySample, ',');
+        const pll = solves[0].steps[6];
+        expect(pll.name).toBe('PLL');
+        // Main sample PLL ends with U2' so should have postAuf
+        expect(pll.postAufTime).toBeGreaterThan(0);
+    });
+
+    test('PLL skip with only U moves: computeStepSegments treats all-U PLL as postAuf', () => {
+        const moveTimings = [{ move: "U'", timestamp: 0 }, { move: "U2", timestamp: 500 }];
+        const seg = computeStepSegments(moveTimings, null, StepName.PLL);
+        expect(seg.preAuf).toBe(0);
+        expect(seg.coreExecution).toBe(0);
+        expect(seg.postAuf).toBeCloseTo(0.5, 5);
     });
 });
 

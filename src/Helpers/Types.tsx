@@ -90,6 +90,8 @@ export interface Step {
     time: number,
     executionTime: number,
     recognitionTime: number,
+    preAufTime: number,
+    postAufTime: number,
     turns: number,
     tps: number,
     moves: string,
@@ -110,6 +112,8 @@ export interface Solve {
     inspectionTime: number,
     recognitionTime: number,
     executionTime: number,
+    preAufTime: number,
+    postAufTime: number,
     turns: number,
     steps: Step[],
     isCorrupt: boolean,
@@ -149,7 +153,8 @@ export interface FilterPanelState {
     badTime: number,
     goodTime: number,
     method: Option,
-    useLogScale: boolean
+    useLogScale: boolean,
+    use4SegmentTiming: boolean
 }
 
 export interface FileInputProps {
@@ -169,7 +174,8 @@ export interface ChartPanelProps {
     goodTime: number,
     methodName: MethodName,
     steps: StepName[],
-    useLogScale: boolean
+    useLogScale: boolean,
+    use4SegmentTiming: boolean
 }
 
 export interface ChartPanelState {
@@ -224,4 +230,43 @@ export interface FastestSolve {
 export interface StreakData {
     longestStreak: number,
     currentStreak: number,
+}
+
+export interface RedundantPair {
+    startIdx: number,
+    endIdx: number,
+    moves: string
+}
+
+export interface MoveAnalysisResult {
+    originalTurns: number,
+    simplifiedTurns: number,
+    wastedMoves: number,
+    redundantPairs: RedundantPair[]
+}
+
+export interface CaseStats {
+    caseName: string,
+    totalCount: number,
+    failureCount: number,
+    failureRate: number,
+    avgMoves: number,
+    /** Expected move count before tolerance (for display). */
+    expectedMovesBase: number,
+    /** Expected move count with tolerance (used for failure detection). */
+    expectedMoves: number,
+    instances: { solveId: string; turns: number; failed: boolean }[]
+}
+
+export interface AufInefficiency {
+    preAufMoves: number,
+    postAufMoves: number,
+    totalAufTime: number,
+    isHighCost: boolean
+}
+
+export interface SolveEfficiency {
+    moveEfficiency: number,
+    hadOllFailure: boolean,
+    hadPllFailure: boolean
 }

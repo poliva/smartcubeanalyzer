@@ -3,14 +3,42 @@ import { GetEmptySolve } from "./CubeHelpers";
 import { Solve, CrossColor, MethodName, StepName } from "./Types";
 import moment from 'moment';
 
-const AUF_MOVES = new Set(['U', "U'", 'U2', "U2'", "U3", "U3'"]);
+export const AUF_MOVES = new Set(['U', "U'", 'U2', "U2'", "U3", "U3'"]);
+export const ROTATIONS = new Set([
+    "x", "x'", "x2", "x3",
+    "y", "y'", "y2", "y3",
+    "z", "z'", "z2", "z3"
+]);
 
-/** Returns duration in ms of leading AUF moves (U, U', U2, U2') from step_N_recorded_moves. */
-function computeAufDurationMs(recordedMoves: string): number {
+export type MoveTiming = { move: string; timestamp: number };
+
+/** Parses Cubeast format "U[100] R[200]" into MoveTiming[], filtering out rotations. */
+export function parseRecordedMoves(raw: string): MoveTiming[] {
+    if (!raw || !raw.trim()) return [];
+    const tokens = raw.trim().split(/\s+/);
+    const result: MoveTiming[] = [];
+    for (const token of tokens) {
+        const m = token.match(/^(.+)\[(\d+)\]$/);
+        if (!m) continue;
+        const move = m[1];
+        if (ROTATIONS.has(move.toLowerCase())) continue;
+        result.push({ move, timestamp: Number(m[2]) });
+    }
+    return result;
+}
+
+export type StepSegments = { recognition: number; preAuf: number; coreExecution: number; postAuf: number };
+
+/**
+ * Computes 4-segment timing from non-rotation moves and previous step end timestamp.
+ * Cross: recognition=0, preAuf=0, postAuf=0, execution=all.
+ * PLL skip (all U moves): preAuf=0, coreExecution=0, all time is postAuf.
+ */
+/** Returns duration in ms of leading AUF moves from Cubeast recorded_moves string (for fallback when no timings). */
+function computeLeadingAufDurationMs(recordedMoves: string): number {
     if (!recordedMoves || !recordedMoves.trim()) return 0;
     const tokens = recordedMoves.trim().split(/\s+/);
     let firstAufTs: number | null = null;
-    let lastAufTs: number | null = null;
     for (const token of tokens) {
         const m = token.match(/^(.+)\[(\d+)\]$/);
         if (!m) continue;
@@ -18,14 +46,87 @@ function computeAufDurationMs(recordedMoves: string): number {
         const ts = Number(m[2]);
         if (AUF_MOVES.has(move)) {
             if (firstAufTs == null) firstAufTs = ts;
-            lastAufTs = ts;
         } else {
             if (firstAufTs != null) return Math.max(0, ts - firstAufTs);
             return 0;
         }
     }
+    let lastAufTs: number | null = null;
+    for (let i = tokens.length - 1; i >= 0; i--) {
+        const m = tokens[i].match(/^(.+)\[(\d+)\]$/);
+        if (!m) continue;
+        if (AUF_MOVES.has(m[1])) lastAufTs = Number(m[2]);
+        else break;
+    }
     if (firstAufTs != null && lastAufTs != null) return Math.max(0, lastAufTs - firstAufTs);
     return 0;
+}
+
+export function computeStepSegments(
+    moves: MoveTiming[],
+    prevEndTsMs: number | null,
+    stepName: StepName
+): StepSegments {
+    const zero = { recognition: 0, preAuf: 0, coreExecution: 0, postAuf: 0 };
+    if (!moves.length) return zero;
+
+    const firstTs = moves[0].timestamp;
+    const lastTs = moves[moves.length - 1].timestamp;
+
+    if (stepName === StepName.Cross) {
+        return {
+            recognition: 0,
+            preAuf: 0,
+            coreExecution: Math.max(0, (lastTs - firstTs) / 1000),
+            postAuf: 0,
+        };
+    }
+
+    const recognition = prevEndTsMs == null ? 0 : Math.max(0, (firstTs - prevEndTsMs) / 1000);
+
+    let firstNonU: number | null = null;
+    for (let i = 0; i < moves.length; i++) {
+        if (!AUF_MOVES.has(moves[i].move)) {
+            firstNonU = i;
+            break;
+        }
+    }
+    let lastNonU: number | null = null;
+    for (let i = moves.length - 1; i >= 0; i--) {
+        if (!AUF_MOVES.has(moves[i].move)) {
+            lastNonU = i;
+            break;
+        }
+    }
+
+    if (stepName === StepName.PLL && firstNonU === null) {
+        return {
+            recognition,
+            preAuf: 0,
+            coreExecution: 0,
+            postAuf: Math.max(0, (lastTs - firstTs) / 1000),
+        };
+    }
+    if (firstNonU === null) {
+        return {
+            recognition,
+            preAuf: 0,
+            coreExecution: Math.max(0, (lastTs - firstTs) / 1000),
+            postAuf: 0,
+        };
+    }
+
+    const preAuf = (moves[firstNonU].timestamp - firstTs) / 1000;
+    const postAuf =
+        stepName === StepName.PLL && lastNonU !== null && lastNonU < moves.length - 1
+            ? (lastTs - moves[lastNonU].timestamp) / 1000
+            : 0;
+    const coreExecution =
+        lastNonU !== null
+            ? Math.max(0, (moves[lastNonU].timestamp - moves[firstNonU].timestamp) / 1000)
+            : 0;
+
+    return { recognition, preAuf, coreExecution, postAuf };
 }
 
 const COMMA_PLACEHOLDER = '\x01';
@@ -41,12 +142,26 @@ function normalizeMovesString(raw: string | undefined | null): string {
     return withoutQuotes.trim();
 }
 
-function tokenizeMoves(raw: string | undefined | null): string[] {
+export function tokenizeMoves(raw: string | undefined | null): string[] {
     const normalized = normalizeMovesString(raw);
     if (!normalized) return [];
     return normalized
         .split(/\s+/)
         .filter((token) => token.length > 0);
+}
+
+/** Counts move tokens excluding cube rotations (x, y, z). Use for all turn counts. */
+export function countMovesExcludingRotations(movesString: string | undefined | null): number {
+    const tokens = tokenizeMoves(movesString);
+    if (!tokens.length) return 0;
+    return tokens.filter((t) => !ROTATIONS.has(t.toLowerCase())).length;
+}
+
+/** Returns move string with all rotation tokens (x, y, z and variants) removed. Use for Acubemy so stored data has no rotations. */
+export function stripRotationsFromMoveString(movesString: string | undefined | null): string {
+    if (!movesString || !movesString.trim()) return '';
+    const tokens = tokenizeMoves(movesString);
+    return tokens.filter((t) => !ROTATIONS.has(t.toLowerCase())).join(' ');
 }
 
 function parseCubeastCsv(stringVal: string, splitter: string): Solve[] {
@@ -66,7 +181,7 @@ function parseCubeastCsv(stringVal: string, splitter: string): Solve[] {
         "solution_rotation": (obj, value) => {
             obj.crossColor = Const.crossMappings.get(value) ?? CrossColor.Unknown;
             if (obj.crossColor == CrossColor.Unknown) {
-                console.log("Unknown solution rotation: ", value);
+                //console.log("Unknown solution rotation: ", value);
                 //obj.isCorrupt = true;
             };
         },
@@ -89,8 +204,13 @@ function parseCubeastCsv(stringVal: string, splitter: string): Solve[] {
         "recognition_time": (step, value) => { step.recognitionTime = Number(value) / 1000; },
         "execution_time": (step, value) => { step.executionTime = Number(value) / 1000; },
         "recorded_moves": (step, value) => {
-            const aufMs = computeAufDurationMs(value);
-            if (aufMs > 0) (step as any).aufDurationMs = aufMs;
+            const moveTimings = parseRecordedMoves(value);
+            if (moveTimings.length > 0) {
+                (step as any)._moveTimings = moveTimings;
+            } else if (value && value.trim()) {
+                const aufMs = computeLeadingAufDurationMs(value);
+                if (aufMs > 0) (step as any).aufDurationMs = aufMs;
+            }
         },
     };
 
@@ -107,21 +227,47 @@ function parseCubeastCsv(stringVal: string, splitter: string): Solve[] {
             }
         });
 
-        // Apply AUF adjustment: move leading AUF time from recognition to execution per step,
-        // but do not apply this fix to the Cross step.
-        const stepTimeMs = (s: { time: number }) => s.time * 1000;
-        for (const step of obj.steps) {
-            if (step.name === StepName.Cross) continue;
-            const aufMs = (step as any).aufDurationMs as number | undefined;
-            if (aufMs == null || aufMs <= 0) continue;
-            const capMs = Math.min(aufMs, stepTimeMs(step));
-            const deltaSec = capMs / 1000;
-            step.recognitionTime = Math.max(0, step.recognitionTime - deltaSec);
-            step.executionTime += deltaSec;
-            delete (step as any).aufDurationMs;
+        let prevEndTsMs: number | null = null;
+        for (let i = 0; i < obj.steps.length; i++) {
+            const step = obj.steps[i];
+            const moveTimings = (step as any)._moveTimings as MoveTiming[] | undefined;
+            if (moveTimings && moveTimings.length > 0) {
+                const seg = computeStepSegments(moveTimings, prevEndTsMs, step.name);
+                step.recognitionTime = seg.recognition;
+                step.preAufTime = seg.preAuf;
+                step.postAufTime = seg.postAuf;
+                const coreExec = seg.coreExecution;
+                step.executionTime = seg.preAuf + coreExec + seg.postAuf;
+                step.time = step.recognitionTime + step.executionTime;
+                step.moves = moveTimings.map((m) => m.move).join(" ");
+                step.turns = moveTimings.length;
+                if (moveTimings.length > 0) {
+                    prevEndTsMs = moveTimings[moveTimings.length - 1].timestamp;
+                }
+            } else {
+                step.preAufTime = 0;
+                step.postAufTime = 0;
+                const aufMs = (step as any).aufDurationMs as number | undefined;
+                if (aufMs != null && aufMs > 0 && step.name !== StepName.Cross) {
+                    const stepTimeMs = step.time * 1000;
+                    const capMs = Math.min(aufMs, stepTimeMs);
+                    const deltaSec = capMs / 1000;
+                    step.recognitionTime = Math.max(0, step.recognitionTime - deltaSec);
+                    step.executionTime += deltaSec;
+                    step.preAufTime = deltaSec;
+                }
+                delete (step as any)._moveTimings;
+                delete (step as any).aufDurationMs;
+                if (prevEndTsMs != null && step.time > 0) {
+                    prevEndTsMs += step.time * 1000;
+                }
+            }
         }
         obj.recognitionTime = obj.steps.reduce((s, st) => s + st.recognitionTime, 0);
         obj.executionTime = obj.steps.reduce((s, st) => s + st.executionTime, 0);
+        obj.preAufTime = obj.steps.reduce((s, st) => s + st.preAufTime, 0);
+        obj.postAufTime = obj.steps.reduce((s, st) => s + st.postAufTime, 0);
+        obj.turns = obj.steps.reduce((s, st) => s + st.turns, 0);
 
         obj.source = 'cubeast';
         obj.rawSource = 'cubeast';
@@ -137,11 +283,6 @@ function parseCubeastCsv(stringVal: string, splitter: string): Solve[] {
 }
 
 function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
-    const ROTATIONS = new Set([
-        "x", "x'", "x2",
-        "y", "y'", "y2",
-        "z", "z'", "z2",
-    ]);
 
     type AcubemyStepDef = { index: number; name: StepName; movesField: string };
 
@@ -155,11 +296,6 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
         { index: 6, name: StepName.PLL, movesField: "pll_moves" },
     ];
 
-    const countNonRotationMoves = (moves: string | undefined | null): number => {
-        const tokens = tokenizeMoves(moves);
-        if (!tokens.length) return 0;
-        return tokens.filter((token) => !ROTATIONS.has(token.toLowerCase())).length;
-    };
     const [keys, ...rows] = stringVal
         .trim()
         .split("\n")
@@ -191,8 +327,7 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
 
     const initAcubemySteps = (
         steps: Solve["steps"],
-        get: (name: string) => string,
-        countMoves: (moves: string | undefined | null) => number
+        get: (name: string) => string
     ) => {
         for (const def of ACUBEMY_STEP_DEFS) {
             const s = steps[def.index];
@@ -201,9 +336,9 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
             s.time = 0;
             s.recognitionTime = 0;
             s.executionTime = 0;
-            s.turns = countMoves(moves);
+            s.turns = countMovesExcludingRotations(moves);
             if (moves) {
-                s.moves = moves;
+                s.moves = stripRotationsFromMoveString(moves);
             }
         }
     };
@@ -232,10 +367,9 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
 
     const computeAcubemySolveTurnsAndTps = (
         solve: Solve,
-        solutionMoves: string | undefined | null,
-        countMoves: (moves: string | undefined | null) => number
+        solutionMoves: string | undefined | null
     ) => {
-        const totalTurns = countMoves(solutionMoves);
+        const totalTurns = countMovesExcludingRotations(solutionMoves);
         solve.turns = totalTurns;
         if (solve.time > 0) {
             solve.tps = totalTurns / solve.time;
@@ -244,19 +378,46 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
         }
     };
 
+    /** Strips rotations from solution and move_times in parallel so lengths stay in sync. */
+    const stripRotationsFromSolutionAndTimes = (
+        solutionMovesRaw: string | undefined | null,
+        moveTimesRaw: string | undefined | null
+    ): { solutionNoRot: string; moveTimesNoRot: string } => {
+        const solutionTokens = tokenizeMoves(solutionMovesRaw);
+        if (!solutionTokens.length || !moveTimesRaw || !moveTimesRaw.trim()) {
+            return { solutionNoRot: '', moveTimesNoRot: '' };
+        }
+        const timeTokens = normalizeMovesString(moveTimesRaw)
+            .split(/\s+/)
+            .filter((t) => t.length > 0)
+            .map((t) => Number(t));
+        if (solutionTokens.length !== timeTokens.length) {
+            return { solutionNoRot: '', moveTimesNoRot: '' };
+        }
+        const keptMoves: string[] = [];
+        const keptTimes: number[] = [];
+        for (let i = 0; i < solutionTokens.length; i++) {
+            if (ROTATIONS.has(solutionTokens[i].toLowerCase())) continue;
+            keptMoves.push(solutionTokens[i]);
+            keptTimes.push(timeTokens[i]);
+        }
+        return {
+            solutionNoRot: keptMoves.join(' '),
+            moveTimesNoRot: keptTimes.join(' '),
+        };
+    };
+
     type StepRange = {
         startIdx: number;
         endIdx: number;
-        firstNonIdx: number | null;
-        lastNonIdx: number | null;
     };
 
+    /** solutionMovesRaw and moveTimesRaw must already have rotations stripped (use stripRotationsFromSolutionAndTimes). */
     const recomputeAcubemyStepTimes = (
         solve: Solve,
         stepDefs: AcubemyStepDef[],
         solutionMovesRaw: string | undefined | null,
-        moveTimesRaw: string | undefined | null,
-        rotations: Set<string>
+        moveTimesRaw: string | undefined | null
     ) => {
         const solutionTokens = tokenizeMoves(solutionMovesRaw);
         if (!solutionTokens.length || !moveTimesRaw || !moveTimesRaw.trim()) {
@@ -289,21 +450,9 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
                     }
                 }
                 if (!ok) continue;
-                let firstNon: number | null = null;
-                let lastNon: number | null = null;
-                for (let k = 0; k < tokens.length; k++) {
-                    const globalIdx = i + k;
-                    const move = solutionTokens[globalIdx];
-                    if (!rotations.has(move.toLowerCase())) {
-                        if (firstNon == null) firstNon = globalIdx;
-                        lastNon = globalIdx;
-                    }
-                }
                 return {
                     startIdx: i,
                     endIdx: i + tokens.length - 1,
-                    firstNonIdx: firstNon,
-                    lastNonIdx: lastNon,
                 };
             }
             return null;
@@ -322,50 +471,55 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
             }
         }
 
-        let prevLastNonIdx: number | null = null;
+        let prevEndIdx: number | null = null;
         let accumulatedRecMs = 0;
         let accumulatedExecMs = 0;
+        let accumulatedPreAufMs = 0;
+        let accumulatedPostAufMs = 0;
 
         for (const def of stepDefs) {
             const s = steps[def.index];
             const range = stepRanges[def.index];
 
-            if (!range || range.firstNonIdx == null || range.lastNonIdx == null) {
+            if (!range) {
                 s.recognitionTime = 0;
                 s.executionTime = 0;
+                s.preAufTime = 0;
+                s.postAufTime = 0;
                 s.time = 0;
                 s.tps = 0;
                 continue;
             }
 
-            const execStartMs = timeTokens[range.firstNonIdx];
-            const execEndMs = timeTokens[range.lastNonIdx];
-            const execMs = Math.max(0, execEndMs - execStartMs);
-
-            let recStartMs: number;
-            if (prevLastNonIdx == null) {
-                recStartMs = timeTokens[0];
-            } else {
-                recStartMs = timeTokens[prevLastNonIdx];
+            const moveTimings: MoveTiming[] = [];
+            for (let k = range.startIdx; k <= range.endIdx; k++) {
+                moveTimings.push({ move: solutionTokens[k], timestamp: timeTokens[k] });
             }
-            const recEndMs = execStartMs;
-            const recMs = Math.max(0, recEndMs - recStartMs);
 
-            s.executionTime = execMs / 1000;
-            s.recognitionTime = recMs / 1000;
-            s.time = s.executionTime + s.recognitionTime;
+            const prevEndTsMs = prevEndIdx == null ? null : timeTokens[prevEndIdx];
+            const seg = computeStepSegments(moveTimings, prevEndTsMs, s.name);
+
+            s.recognitionTime = seg.recognition;
+            s.preAufTime = seg.preAuf;
+            s.postAufTime = seg.postAuf;
+            s.executionTime = seg.preAuf + seg.coreExecution + seg.postAuf;
+            s.time = s.recognitionTime + s.executionTime;
 
             if (s.time > 0 && s.turns > 0) {
                 s.tps = s.turns / s.time;
             }
 
-            accumulatedExecMs += execMs;
-            accumulatedRecMs += recMs;
-            prevLastNonIdx = range.lastNonIdx;
+            accumulatedRecMs += seg.recognition * 1000;
+            accumulatedExecMs += s.executionTime * 1000;
+            accumulatedPreAufMs += seg.preAuf * 1000;
+            accumulatedPostAufMs += seg.postAuf * 1000;
+            prevEndIdx = range.endIdx;
         }
 
-        solve.executionTime = accumulatedExecMs / 1000;
         solve.recognitionTime = accumulatedRecMs / 1000;
+        solve.executionTime = accumulatedExecMs / 1000;
+        solve.preAufTime = accumulatedPreAufMs / 1000;
+        solve.postAufTime = accumulatedPostAufMs / 1000;
     };
 
     const formedArr = rows.map((item) => {
@@ -430,20 +584,21 @@ function parseAcubemyCsv(stringVal: string, splitter: string): Solve[] {
         const ollCaseRaw = get("oll_case_id");
         const pllCaseRaw = get("pll_case_name");
 
-        initAcubemySteps(steps, get, countNonRotationMoves);
+        initAcubemySteps(steps, get);
         normalizeAcubemyLastLayerCases(steps, ollCaseRaw, pllCaseRaw);
 
-        const solutionMoves = get("solution") || get("raw_solution");
-        computeAcubemySolveTurnsAndTps(solve, solutionMoves, countNonRotationMoves);
-
+        const solutionMovesRaw = get("solution") || get("raw_solution");
         const moveTimesRaw = get("move_times");
-        if (solutionMoves && moveTimesRaw && moveTimesRaw.trim().length > 0) {
+        const { solutionNoRot, moveTimesNoRot } = stripRotationsFromSolutionAndTimes(solutionMovesRaw, moveTimesRaw);
+
+        computeAcubemySolveTurnsAndTps(solve, solutionNoRot || solutionMovesRaw);
+
+        if (solutionNoRot && moveTimesNoRot) {
             recomputeAcubemyStepTimes(
                 solve,
                 ACUBEMY_STEP_DEFS,
-                solutionMoves,
-                moveTimesRaw,
-                ROTATIONS
+                solutionNoRot,
+                moveTimesNoRot
             );
         }
 

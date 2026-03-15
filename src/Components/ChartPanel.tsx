@@ -1,5 +1,5 @@
 import React from "react";
-import { ChartPanelProps, ChartPanelState, ChartType, CrossColor, FastestSolve, MethodName, OllEdgeOrientation, PllCornerPermutation, Solve, StepName, StreakData } from "../Helpers/Types";
+import { ChartPanelProps, ChartPanelState, ChartType, CaseStats, CrossColor, FastestSolve, MethodName, OllEdgeOrientation, PllCornerPermutation, Solve, StepName, StreakData } from "../Helpers/Types";
 import { Chart as ChartJS, ChartData, CategoryScale, Point } from 'chart.js/auto';
 import { calculateAverage, calculateMovingAverage, calculateMovingPercentage, calculateMovingStdDev, reduceDataset, splitIntoChunks, getTypicalAverages, calculateMovingAverageChopped } from "../Helpers/MathHelpers";
 import { createOptions, buildChartHtml } from "../Helpers/ChartHelpers";
@@ -9,6 +9,7 @@ import { Const } from "../Helpers/Constants";
 import DataGrid, { CellClickArgs } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import 'chartjs-adapter-moment';
+import { analyzeStepMoves, computeCaseFailureStats, computeSolveEfficiency, coreMovesCount } from "../Helpers/MoveAnalysis";
 
 export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState> {
     state: ChartPanelState = { solves: [] };
@@ -116,6 +117,12 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
     }
 
     buildRunningTurnsData() {
+        /*
+        this.props.solves.forEach((solve, index) => {
+            const turnList = solve.steps.map(s => s.moves).filter(Boolean).join(' ');
+            console.debug(`[Average Turns] solve ${index + 1}: moveCount=${solve.turns}, turnList="${turnList}"`);
+        });
+        */
         let movingAverage = calculateMovingAverage(this.props.solves.map(x => x.turns), this.props.windowSize);
 
         let labels = [];
@@ -138,31 +145,52 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
     }
 
     buildRunningRecognitionExecution() {
+        const colors = {
+            recognition: 'rgb(54, 162, 235)',
+            preAuf: 'rgb(153, 102, 255)',
+            execution: 'rgb(255, 99, 132)',
+            postAuf: 'rgb(255, 159, 64)',
+        };
         let movingRecognition = calculateMovingAverage(this.props.solves.map(x => x.recognitionTime), this.props.windowSize);
-        let movingExecution = calculateMovingAverage(this.props.solves.map(x => x.executionTime), this.props.windowSize);
-
         let labels = [];
         for (let i = 1; i <= movingRecognition.length; i++) {
-            labels.push(i.toString())
-        };
-
-        movingExecution = reduceDataset(movingExecution, this.props.pointsPerGraph);
+            labels.push(i.toString());
+        }
         movingRecognition = reduceDataset(movingRecognition, this.props.pointsPerGraph);
         labels = reduceDataset(labels, this.props.pointsPerGraph);
 
-        let data: ChartData<"line"> = {
-            labels,
-            datasets: [{
-                label: `Average Recognition Of ${this.props.windowSize}`,
-                data: movingRecognition
-            },
-            {
-                label: `Average Execution Of ${this.props.windowSize}`,
-                data: movingExecution
-            }]
+        if (this.props.use4SegmentTiming) {
+            const movingPreAuf = reduceDataset(calculateMovingAverage(this.props.solves.map(x => x.preAufTime), this.props.windowSize), this.props.pointsPerGraph);
+            const movingCoreExec = reduceDataset(calculateMovingAverage(this.props.solves.map(x => x.executionTime - x.preAufTime - x.postAufTime), this.props.windowSize), this.props.pointsPerGraph);
+            const movingPostAuf = reduceDataset(calculateMovingAverage(this.props.solves.map(x => x.postAufTime), this.props.windowSize), this.props.pointsPerGraph);
+
+            const hasPreAuf = movingPreAuf.some(v => v > 0);
+            const hasPostAuf = movingPostAuf.some(v => v > 0);
+
+            const datasets: ChartData<"line">["datasets"] = [];
+            datasets.push({ label: `Average Recognition Of ${this.props.windowSize}`, data: movingRecognition, borderColor: colors.recognition, backgroundColor: colors.recognition });
+            if (hasPreAuf) {
+                datasets.push({ label: `Average Pre-AUF Of ${this.props.windowSize}`, data: movingPreAuf, borderColor: colors.preAuf, backgroundColor: colors.preAuf });
+            }
+            datasets.push({ label: `Average Execution Of ${this.props.windowSize}`, data: movingCoreExec, borderColor: colors.execution, backgroundColor: colors.execution });
+            if (hasPostAuf) {
+                datasets.push({ label: `Average Post-AUF Of ${this.props.windowSize}`, data: movingPostAuf, borderColor: colors.postAuf, backgroundColor: colors.postAuf });
+            }
+
+            return {
+                labels,
+                datasets,
+            } as ChartData<"line">;
         }
 
-        return data;
+        let movingExecution = reduceDataset(calculateMovingAverage(this.props.solves.map(x => x.executionTime), this.props.windowSize), this.props.pointsPerGraph);
+        return {
+            labels,
+            datasets: [
+                { label: `Average Recognition Of ${this.props.windowSize}`, data: movingRecognition, borderColor: colors.recognition, backgroundColor: colors.recognition },
+                { label: `Average Execution Of ${this.props.windowSize}`, data: movingExecution, borderColor: colors.execution, backgroundColor: colors.execution },
+            ],
+        } as ChartData<"line">;
     }
 
     isPreviousDay(date1: Date, date2: Date): boolean {
@@ -740,61 +768,218 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
     }
 
     buildCaseData() {
+        const colors = {
+            recognition: 'rgb(54, 162, 235)',
+            preAuf: 'rgb(153, 102, 255)',
+            execution: 'rgb(255, 99, 132)',
+            postAuf: 'rgb(255, 159, 64)',
+        };
         if (this.props.steps.length != 1 || (this.props.steps[0] !== StepName.OLL && this.props.steps[0] !== StepName.PLL)) {
-            let data: ChartData<"bar"> = {
-                labels: [],
-                datasets: []
-            }
-            return data;
+            return { labels: [], datasets: [] } as ChartData<"bar">;
         }
 
         let solves = this.props.solves.slice(-this.props.windowSize);
+        // Compressed solves have only the selected step at index 0
+        const stepIndex = 0;
+        const failureStatsArr = computeCaseFailureStats(solves, stepIndex);
+        const failureMap: { [caseName: string]: CaseStats } = {};
+        failureStatsArr.forEach((cs: CaseStats) => { failureMap[cs.caseName] = cs; });
 
-        let caseTimes: { [id: string]: { recognitionTime: number, executionTime: number }[] } = {};
+        type CaseRow = { recognitionTime: number; executionTime: number; preAufTime: number; postAufTime: number; turns: number };
+        let caseTimes: { [id: string]: CaseRow[] } = {};
         for (let i = 0; i < solves.length; i++) {
-            if (!(solves[i].steps[0].case in caseTimes)) {
-                caseTimes[solves[i].steps[0].case] = [];
-            }
-            caseTimes[solves[i].steps[0].case].push({
-                recognitionTime: solves[i].recognitionTime,
-                executionTime: solves[i].executionTime
+            const s = solves[i];
+            if (!(s.steps[0].case in caseTimes)) caseTimes[s.steps[0].case] = [];
+            caseTimes[s.steps[0].case].push({
+                recognitionTime: s.recognitionTime,
+                executionTime: s.executionTime - s.preAufTime - s.postAufTime,
+                preAufTime: s.preAufTime,
+                postAufTime: s.postAufTime,
+                turns: s.steps[0].turns,
             });
         }
 
-        let cases: { label: string, recognitionTime: number, executionTime: number }[] = []
-        for (let key in caseTimes) {
-            let recognitionTimes = caseTimes[key].map(x => x.recognitionTime);
-            let executionTimes = caseTimes[key].map(x => x.executionTime);
-
-            let averageRecognition: number = recognitionTimes.reduce((a, b) => a + b) / recognitionTimes.length;
-            let averageExecution: number = executionTimes.reduce((a, b) => a + b) / executionTimes.length;
-
+        type CaseAgg = { label: string; recognitionTime: number; executionTime: number; preAufTime: number; postAufTime: number; avgMoves: number; failureRate: number };
+        let cases: CaseAgg[] = [];
+        for (const key in caseTimes) {
+            const rows = caseTimes[key];
+            const fs = failureMap[key];
             cases.push({
                 label: key,
-                executionTime: averageExecution,
-                recognitionTime: averageRecognition
-            })
+                recognitionTime: rows.reduce((a, r) => a + r.recognitionTime, 0) / rows.length,
+                executionTime: rows.reduce((a, r) => a + r.executionTime, 0) / rows.length,
+                preAufTime: rows.reduce((a, r) => a + r.preAufTime, 0) / rows.length,
+                postAufTime: rows.reduce((a, r) => a + r.postAufTime, 0) / rows.length,
+                avgMoves: rows.reduce((a, r) => a + r.turns, 0) / rows.length,
+                failureRate: fs ? fs.failureRate : 0,
+            });
+        }
+        cases.sort((a, b) => (b.recognitionTime + b.preAufTime + b.executionTime + b.postAufTime) - (a.recognitionTime + a.preAufTime + a.executionTime + a.postAufTime));
+
+        const labels = cases.map(x => x.label);
+        if (this.props.use4SegmentTiming) {
+            const recognitionValues = cases.map(x => x.recognitionTime);
+            const preAufValues = cases.map(x => x.preAufTime);
+            const executionValues = cases.map(x => x.executionTime);
+            const postAufValues = cases.map(x => x.postAufTime);
+
+            const hasPreAuf = preAufValues.some(v => v > 0);
+            const hasPostAuf = postAufValues.some(v => v > 0);
+
+            const datasets: ChartData<"bar">["datasets"] = [];
+            datasets.push({ label: `Recognition (past ${this.props.windowSize})`, data: recognitionValues, backgroundColor: colors.recognition });
+            if (hasPreAuf) {
+                datasets.push({ label: `Pre-AUF (past ${this.props.windowSize})`, data: preAufValues, backgroundColor: colors.preAuf });
+            }
+            datasets.push({ label: `Execution (past ${this.props.windowSize})`, data: executionValues, backgroundColor: colors.execution });
+            if (hasPostAuf) {
+                datasets.push({ label: `Post-AUF (past ${this.props.windowSize})`, data: postAufValues, backgroundColor: colors.postAuf });
+            }
+
+            return {
+                labels,
+                datasets,
+            } as ChartData<"bar">;
+        }
+        const recognitionValues = cases.map(x => x.recognitionTime);
+        const executionValues = cases.map(x => x.preAufTime + x.executionTime + x.postAufTime);
+        return {
+            labels,
+            datasets: [
+                { label: `Average recognition time for each case in past ${this.props.windowSize} solves`, data: recognitionValues, backgroundColor: colors.recognition },
+                { label: `Average execution time for each case in past ${this.props.windowSize} solves`, data: executionValues, backgroundColor: colors.execution },
+            ],
+        } as ChartData<"bar">;
+    }
+
+    buildAlgorithmPracticeTable() {
+        if (this.props.steps.length !== 1 || (this.props.steps[0] !== StepName.OLL && this.props.steps[0] !== StepName.PLL)) {
+            return (<></>);
         }
 
-        cases.sort((a, b) => {
-            return (b.recognitionTime + b.executionTime) - (a.recognitionTime + a.executionTime);
-        })
+        // Compressed solves have only the selected step at index 0
+        const stepIndex = 0;
+        const solves = this.props.solves.slice(-this.props.windowSize);
+        const caseStats = computeCaseFailureStats(solves, stepIndex);
 
-        let labels = cases.map(x => "Case: " + x.label);
-        let recognitionValues = cases.map(x => x.recognitionTime)
-        let executionValues = cases.map(x => x.executionTime)
+        // debug log for failed cases
+        /*
+        const solveById = new Map(solves.map((s: Solve) => [s.id, s]));
+        for (const cs of caseStats) {
+            if (cs.failureCount === 0) continue;
+            console.log(`[Algorithm Practice] Case "${cs.caseName}" (expected moves: ${cs.expectedMoves})`);
+            for (const inst of cs.instances) {
+                const solve = solveById.get(inst.solveId);
+                const step = solve?.steps[stepIndex];
+                const moves = step?.moves ?? "";
+                const coreMoves = coreMovesCount(moves);
+                const stepTime = step?.time ?? 0;
+                console.log(`  solveId ${inst.solveId} — moves: "${moves}" — coreMoves: ${coreMoves} — time: ${stepTime.toFixed(3)}s — failed: ${inst.failed}`);
+            }
+        }
+        */
 
-        let data: ChartData<"bar"> = {
-            labels: labels,
-            datasets: [{
-                label: `Average recognition time for each case in past ${this.props.windowSize} solves`,
-                data: recognitionValues
-            }, {
-                label: `Average execution time for each case in past ${this.props.windowSize} solves`,
-                data: executionValues
-            }]
+        type AlgoPracticeRow = {
+            case: string;
+            total: number;
+            failed: number;
+            failureRate: string;
+            avgMoves: string;
+            expectedMoves: number;
+            avgWasted: string;
+            avgTime: string;
+        };
+
+        const rows: AlgoPracticeRow[] = caseStats.map((cs: CaseStats) => {
+            const matchingSolves = solves.filter((s: Solve) => s.steps[0] && s.steps[0].case === cs.caseName);
+            const avgTime = matchingSolves.length > 0
+                ? matchingSolves.reduce((sum: number, s: Solve) => sum + s.steps[0].time, 0) / matchingSolves.length
+                : 0;
+            const avgWasted = matchingSolves.length > 0
+                ? matchingSolves.reduce((sum: number, s: Solve) => sum + analyzeStepMoves(s.steps[0].moves).wastedMoves, 0) / matchingSolves.length
+                : 0;
+
+            return {
+                case: cs.caseName,
+                total: cs.totalCount,
+                failed: cs.failureCount,
+                failureRate: cs.failureRate.toFixed(1) + "%",
+                avgMoves: cs.avgMoves.toFixed(1),
+                expectedMoves: cs.expectedMovesBase,
+                avgWasted: avgWasted.toFixed(1),
+                avgTime: avgTime.toFixed(3),
+            };
+        });
+
+        const cols = [
+            { key: 'case', name: 'Case' },
+            { key: 'total', name: 'Total' },
+            { key: 'failed', name: 'Failed' },
+            { key: 'failureRate', name: 'Failure %' },
+            { key: 'avgMoves', name: 'Avg Moves' },
+            { key: 'expectedMoves', name: 'Expected' },
+            { key: 'avgWasted', name: 'Avg Wasted' },
+            { key: 'avgTime', name: 'Avg Time (s)' },
+        ];
+
+        return (<DataGrid rows={rows} columns={cols} />);
+    }
+
+    buildRunningEfficiencyData() {
+        const solves = this.props.solves;
+        if (solves.length === 0) return this.getEmptyChartData();
+
+        const needOll = this.props.methodName === MethodName.CFOP;
+        const needPll = this.props.methodName === MethodName.CFOP || this.props.methodName === MethodName.CFOP_2OLL;
+
+        const ollMap = needOll ? new Map(computeCaseFailureStats(solves, 5).map((s: CaseStats) => [s.caseName, s])) : undefined;
+        const pllMap = needPll ? new Map(computeCaseFailureStats(solves, 6).map((s: CaseStats) => [s.caseName, s])) : undefined;
+
+        const effList = solves.map((solve: Solve) => computeSolveEfficiency(solve, ollMap, pllMap));
+        const efficiencies = effList.map((e) => e.moveEfficiency * 100);
+
+        let movingAvg = calculateMovingAverage(efficiencies, this.props.windowSize);
+
+        let labels: string[] = [];
+        for (let i = 1; i <= movingAvg.length; i++) {
+            labels.push(i.toString());
         }
 
+        movingAvg = reduceDataset(movingAvg, this.props.pointsPerGraph);
+        labels = reduceDataset(labels, this.props.pointsPerGraph);
+
+        const datasets: ChartData<"line">["datasets"] = [
+            {
+                label: `Move Efficiency % (avg of ${this.props.windowSize})`,
+                data: movingAvg
+            }
+        ];
+        if (this.props.methodName === MethodName.CFOP) {
+            const ollFailureData = labels.map((lbl, i) => effList[parseInt(lbl, 10) - 1]?.hadOllFailure ? movingAvg[i] : null);
+            const pllFailureData = labels.map((lbl, i) => effList[parseInt(lbl, 10) - 1]?.hadPllFailure ? movingAvg[i] : null);
+            datasets.push(
+                {
+                    label: 'OLL failure',
+                    data: ollFailureData,
+                    showLine: false,
+                    pointRadius: 6,
+                    pointBackgroundColor: 'rgba(255, 99, 132, 0.8)',
+                    pointBorderColor: 'rgb(255, 99, 132)',
+                    pointBorderWidth: 1
+                },
+                {
+                    label: 'PLL failure',
+                    data: pllFailureData,
+                    showLine: false,
+                    pointRadius: 6,
+                    pointBackgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    pointBorderColor: 'rgb(54, 162, 235)',
+                    pointBorderWidth: 1
+                }
+            );
+        }
+
+        let data: ChartData<"line"> = { labels, datasets };
         return data;
     }
 
@@ -856,6 +1041,7 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
         // Add charts that require exactly one step to be chosen
         if (this.props.steps.length == 1 && (this.props.steps[0] === StepName.OLL || this.props.steps[0] === StepName.PLL)) {
             charts.push(buildChartHtml(<Bar data={this.buildCaseData()} options={createOptions(ChartType.Bar, "Solve Number", "Time (s)", this.props.useLogScale)} />, "Average Recognition Time and Execution Time per Case", "This chart shows how long your execution/recognition took for any individual last layer algorithm, sorted by how long each took."));
+            charts.push(buildChartHtml(this.buildAlgorithmPracticeTable(), "Algorithm Practice", "Per-case failure rate and move efficiency. 'Failed' means core move count exceeded mode and average time for that case, suggesting a redo or correction. 'Avg Wasted' shows redundant same-face moves that could be cancelled."));
         }
 
         // Add remaining charts
@@ -864,6 +1050,7 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
         charts.push(buildChartHtml(<Bar data={this.buildHistogramData()} options={createOptions(ChartType.Bar, "Time (s)", "Count", this.props.useLogScale)} />, "Count of Solves by How Long They Took", "This chart shows how many solves you have done in 10s, 11s, 12s, etc..."));
         charts.push(buildChartHtml(<Line data={this.buildRunningTpsData()} options={createOptions(ChartType.Line, "Solve Number", "Time (s)", this.props.useLogScale)} />, "Average Turns Per Second", "This chart shows your average turns per second. 'TPS During Execution' only counts your TPS while actively turning the cube"));
         charts.push(buildChartHtml(<Line data={this.buildRunningTurnsData()} options={createOptions(ChartType.Line, "Solve Number", "Turns", this.props.useLogScale)} />, "Average Turns", "This chart shows your average number of turns, in quarter turn metric"));
+        charts.push(buildChartHtml(<Line data={this.buildRunningEfficiencyData()} options={createOptions(ChartType.Line, "Solve Number", "Efficiency %", this.props.useLogScale)} />, "Move Efficiency", "This chart shows the ratio of simplified (after cancelling redundant same-face moves) to actual move count. 100% means no wasted moves."));
         charts.push(buildChartHtml(this.buildBestSolves(), `Top ${Const.FastestSolvesCount} Fastest Solves`, `This shows your ${Const.FastestSolvesCount} fastest solves, given the filters`));
         charts.push(buildChartHtml(<Line data={this.buildRunningStdDevData()} options={createOptions(ChartType.Line, "Solve Number", "Time (s)", this.props.useLogScale)} />, "Average Standard Deviation", "This chart shows your running average's standard deviation"));
         charts.push(buildChartHtml(<Line data={this.buildRunningColorPercentages()} options={createOptions(ChartType.Line, "Solve Number", "Percentage", this.props.useLogScale)} />, "Percentage of Solves by Cross Color", "This chart shows what percentage of solves started with cross on White/Yellow/etc..."));
