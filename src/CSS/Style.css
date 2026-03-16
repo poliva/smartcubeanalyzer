@@ -1248,6 +1248,28 @@ h6 {
 /*--------------------------------------------------------------
 # Dark theme overrides (Bootstrap 5.3 data-bs-theme="dark")
 --------------------------------------------------------------*/
+[data-bs-theme="light"] .rdg {
+  background: #ffffff;
+  color: #444444;
+  border-color: #dee2e6;
+}
+
+[data-bs-theme="light"] .rdg-cell {
+  background: #ffffff;
+  color: #444444;
+  border-color: #dee2e6;
+}
+
+[data-bs-theme="light"] .rdg-header-row,
+[data-bs-theme="light"] .rdg-row {
+  background: #ffffff;
+  color: #444444;
+}
+
+[data-bs-theme="light"] .rdg-cell:hover {
+  background: #f8f9fa;
+}
+
 [data-bs-theme="dark"] body {
   background: #0d1117;
   color: #e6edf3;
