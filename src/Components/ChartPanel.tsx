@@ -668,6 +668,8 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
                     this.props.pointsPerGraph
                 )
                 : movingAvg.map(() => 0);
+            const ollSuccess = ollRate.map((r) => 100 - r);
+            const pllSuccess = pllRate.map((r) => 100 - r);
             const solveEfficiency = movingAvg.map((eff, i) => eff - ollRate[i] - pllRate[i]);
             datasets.push({
                 label: 'Solve efficiency',
@@ -675,14 +677,14 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
             });
             if (needOllForChart) {
                 datasets.push({
-                    label: `OLL failure % (last ${this.props.windowSize})`,
-                    data: ollRate,
+                    label: `OLL success % (last ${this.props.windowSize})`,
+                    data: ollSuccess,
                 });
             }
             if (needPllForChart) {
                 datasets.push({
-                    label: `PLL failure % (last ${this.props.windowSize})`,
-                    data: pllRate,
+                    label: `PLL success % (last ${this.props.windowSize})`,
+                    data: pllSuccess,
                 });
             }
         }
@@ -745,7 +747,7 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
         charts.push(buildChartHtml(<Bar data={c.histogram as ChartData<"bar">} options={createOptions(ChartType.Bar, "Time (s)", "Count", p.useLogScale, true, false, isDark)} />, "Count of Solves by How Long They Took", "This chart shows how many solves you have done in 10s, 11s, 12s, etc..."));
         charts.push(buildChartHtml(<Line data={c.runningTps as ChartData<"line">} options={createOptions(ChartType.Line, "Solve Number", "Time (s)", p.useLogScale, true, false, isDark)} />, "Average Turns Per Second", "This chart shows your average turns per second. 'TPS During Execution' only counts your TPS while actively turning the cube"));
         charts.push(buildChartHtml(<Line data={c.runningTurns as ChartData<"line">} options={createOptions(ChartType.Line, "Solve Number", "Turns", p.useLogScale, true, false, isDark)} />, "Average Turns", "This chart shows your average number of turns, in quarter turn metric"));
-        charts.push(buildChartHtml(<Line data={c.runningEfficiency as ChartData<"line">} options={createOptions(ChartType.Line, "Solve Number", "Percentage", p.useLogScale, true, false, isDark)} />, "Solve Efficiency", "This chart shows move efficiency ratio (after cancelling redundant same-face moves; 100% = no wasted moves), OLL/PLL failure rates, and a combined solve efficiency (move efficiency minus failure rates)."));
+        charts.push(buildChartHtml(<Line data={c.runningEfficiency as ChartData<"line">} options={createOptions(ChartType.Line, "Solve Number", "Percentage", p.useLogScale, true, false, isDark)} />, "Solve Efficiency", "This chart shows move efficiency ratio (after cancelling redundant same-face moves; 100% = no wasted moves), OLL/PLL success rates, and a combined solve efficiency (move efficiency minus failure rates)."));
         charts.push(buildChartHtml(this.buildBestSolves(c.bestSolvesData as FastestSolve[]), `Top ${Const.FastestSolvesCount} Fastest Solves`, `This shows your ${Const.FastestSolvesCount} fastest solves, given the filters`));
         charts.push(buildChartHtml(<Line data={c.runningStdDev as ChartData<"line">} options={createOptions(ChartType.Line, "Solve Number", "Time (s)", p.useLogScale, true, false, isDark)} />, "Average Standard Deviation", "This chart shows your running average's standard deviation"));
         charts.push(buildChartHtml(<Line data={c.runningColorPercentages as ChartData<"line">} options={createOptions(ChartType.Line, "Solve Number", "Percentage", p.useLogScale, true, false, isDark)} />, "Percentage of Solves by Cross Color", "This chart shows what percentage of solves started with cross on White/Yellow/etc..."));
