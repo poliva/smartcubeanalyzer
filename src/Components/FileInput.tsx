@@ -61,26 +61,14 @@ export class FileInput extends React.Component<FileInputProps, FileInputState> {
     };
 
     showTestData() {
-        // #region agent log
-        fetch('http://127.0.0.1:7299/ingest/abb27326-ebe7-4354-be17-843150181f69',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'282053'},body:JSON.stringify({sessionId:'282053',location:'FileInput.tsx:showTestData',message:'showTestData called',data:{},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         GetDemoData()
             .then((csv) => {
-                // #region agent log
-                fetch('http://127.0.0.1:7299/ingest/abb27326-ebe7-4354-be17-843150181f69',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'282053'},body:JSON.stringify({sessionId:'282053',location:'FileInput.tsx:after GetDemoData',message:'fetch succeeded',data:{csvLength:csv?.length},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 const solveList: Solve[] = parseCsv(csv, ',');
-                // #region agent log
-                fetch('http://127.0.0.1:7299/ingest/abb27326-ebe7-4354-be17-843150181f69',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'282053'},body:JSON.stringify({sessionId:'282053',location:'FileInput.tsx:after parseCsv',message:'parseCsv succeeded',data:{solveCount:solveList?.length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
                 const method = CalculateMostUsedMethod(solveList);
                 const suggestedMethod: Option = { label: method, value: method };
                 const suggestedSessions = CalculateAllSessionOptions(solveList);
                 const suggestedWindowSize = CalculateWindowSize(solveList.length);
 
-                // #region agent log
-                fetch('http://127.0.0.1:7299/ingest/abb27326-ebe7-4354-be17-843150181f69',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'282053'},body:JSON.stringify({sessionId:'282053',location:'FileInput.tsx:before setState',message:'about to setState with test data',data:{solveCount:solveList.length,sessionsCount:suggestedSessions?.length},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
                 this.setState({
                     solves: solveList,
                     suggestedMethod,
@@ -96,9 +84,6 @@ export class FileInput extends React.Component<FileInputProps, FileInputState> {
                 });
             })
             .catch((err) => {
-                // #region agent log
-                fetch('http://127.0.0.1:7299/ingest/abb27326-ebe7-4354-be17-843150181f69',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'282053'},body:JSON.stringify({sessionId:'282053',location:'FileInput.tsx:showTestData catch',message:'demo load failed',data:{err:String(err?.message || err)},timestamp:Date.now(),hypothesisId:'A-B-C'})}).catch(()=>{});
-                // #endregion
                 console.error('Failed to load demo data:', err);
             });
     }

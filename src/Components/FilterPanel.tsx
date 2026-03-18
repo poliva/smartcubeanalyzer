@@ -342,12 +342,6 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         newState.lastAppliedSolves = nextProps.solves;
         newState.lastAppliedFilters = newState.filters;
         newState.lastAppliedWindowSize = newState.windowSize;
-
-        // #region agent log
-        if (solvesChanged) {
-            fetch('http://127.0.0.1:7299/ingest/abb27326-ebe7-4354-be17-843150181f69',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'282053'},body:JSON.stringify({sessionId:'282053',location:'FilterPanel.tsx:getDerivedStateFromProps',message:'solves changed',data:{allSolves:newState.allSolves.length,filteredSolves:newState.filteredSolves.length,compressedSolves:newState.compressedSolves.length,sessionsLength:newState.filters.sessions?.length},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
-        }
-        // #endregion
         return newState;
     }
 
