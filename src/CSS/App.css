@@ -37,3 +37,17 @@
     transform: rotate(360deg);
   }
 }
+
+/* On mobile, override Bootstrap's 4:3 ratio to a fixed 300px height instead */
+@media (max-width: 767px) {
+  .ratio.ratio-4x3 {
+    --bs-aspect-ratio: 0%;
+    height: 300px;
+  }
+
+  .container-fluid {
+    max-width: 100% !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}

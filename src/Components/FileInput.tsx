@@ -171,9 +171,8 @@ export class FileInput extends React.Component<FileInputProps, FileInputState> {
 
                 <HelpPanel showHelpPanel={this.state.showHelpModal} onCloseHandler={() => this.closeButtonClicked()} />
 
-                <Container className="container-fluid">
-                    <br />
-                    <Row className="align-items-stretch g-3">
+                <Container className="container-fluid mt-2 mt-md-3">
+                    <Row className="align-items-stretch g-2 g-md-3">
                         <Col lg={6} md={12}>
                             <Card className="info-card h-100">
                                 <Form className="m-2">

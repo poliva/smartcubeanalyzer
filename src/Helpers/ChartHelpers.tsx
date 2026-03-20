@@ -13,8 +13,8 @@ export function createTooltip(description: string) {
 
 export function buildChartHtml(chart: JSX.Element, title: string, tooltip: string): JSX.Element {
     return (
-        <Col key={title} className="col-12 col-lg-6">
-            <Card className="p-3 shadow-sm">
+        <Col key={title} className="col-12 col-md-6">
+            <Card className="p-2 p-md-3 shadow-sm">
                 <OverlayTrigger placement="top" overlay={createTooltip(tooltip)}>
                     <CardText className="text-center fw-bold">
                         {title} ⓘ
@@ -104,7 +104,8 @@ export function createOptions(chartType: ChartType, xAxis: string, yAxis: string
                         },
                         stacked: isStacked,
                         ticks: {
-                            autoSkip: false
+                            autoSkip: true,
+                            maxRotation: 45,
                         }
                     },
                     y: {
