@@ -1,17 +1,27 @@
 import React from "react";
-import { FileInputProps, FileInputState, Solve } from "../Helpers/Types";
+import { FileInputProps, FileInputState, MethodName, Solve, StepName } from "../Helpers/Types";
 import { parseCsv } from "../Helpers/CsvParser";
 import { FilterPanel } from "./FilterPanel";
 import { GetDemoData } from "../Helpers/SampleData"
-import { Button, Form, FormControl, Card, Row, ButtonGroup, Navbar, Container } from "react-bootstrap";
+import { Button, Form, FormControl, Card, Row, Col, ButtonGroup, Navbar, Container } from "react-bootstrap";
 import { HelpPanel } from "./HelpPanel";
 import { CalculateMostUsedMethod, CalculateWindowSize, CalculateAllSessionOptions } from "../Helpers/CubeHelpers";
 import { Option } from "react-multi-select-component"
 import ReactGA from 'react-ga4';
 import { ThemeContext } from "../contexts/ThemeContext";
 
+const CFOP_PRESETS: { label: string; steps: StepName[] }[] = [
+    { label: 'Full CFOP',     steps: [StepName.Cross, StepName.F2L_1, StepName.F2L_2, StepName.F2L_3, StepName.F2L_4, StepName.OLL, StepName.PLL] },
+    { label: 'OLL',           steps: [StepName.OLL] },
+    { label: 'PLL',           steps: [StepName.PLL] },
+    { label: 'Cross + F2L 1', steps: [StepName.Cross, StepName.F2L_1] },
+    { label: 'All F2L',       steps: [StepName.F2L_1, StepName.F2L_2, StepName.F2L_3, StepName.F2L_4] },
+];
+
 export class FileInput extends React.Component<FileInputProps, FileInputState> {
-    state: FileInputState = { solves: [], showHelpModal: false, isParsing: false };
+    state: FileInputState = { solves: [], showHelpModal: false, isParsing: false, currentMethod: MethodName.CFOP };
+
+    private filterPanelRef = React.createRef<FilterPanel>();
 
     constructor(props: FileInputProps) {
         super(props);
@@ -52,7 +62,8 @@ export class FileInput extends React.Component<FileInputProps, FileInputState> {
                     suggestedMethod,
                     suggestedSessions,
                     suggestedWindowSize,
-                    showTestAlert: false
+                    showTestAlert: false,
+                    currentMethod: method as MethodName,
                 });
 
                 ReactGA.event({
@@ -85,7 +96,8 @@ export class FileInput extends React.Component<FileInputProps, FileInputState> {
                     suggestedMethod,
                     suggestedSessions,
                     suggestedWindowSize,
-                    showTestAlert: true
+                    showTestAlert: true,
+                    currentMethod: method as MethodName,
                 });
 
                 ReactGA.event({
@@ -150,30 +162,55 @@ export class FileInput extends React.Component<FileInputProps, FileInputState> {
 
                 <Container className="container-fluid">
                     <br />
-                    <Row>
-                        <Card className="info-card col-lg-6 col-md-12 col-sm-12">
-                            <Form className="m-2">
-                                <h3>Upload your Cubeast and Acubemy CSV files:</h3>
-                                <FormControl type="file" id="uploaded_data" accept=".csv" multiple />
-                            </Form>
-                            <ButtonGroup className="m-2">
-                                <Button className="col-8" variant="success" disabled={this.state.isParsing} onClick={() => { this.showFileData(); }}>
-                                    {this.state.isParsing ? "Parsing..." : "Display My Stats!"}
-                                </Button>
-                                <Button className="col-4" disabled={this.state.isParsing} onClick={() => { this.showTestData(); }}>
-                                    {this.state.isParsing ? "Parsing..." : "Display Test Stats!"}
-                                </Button>
-                            </ButtonGroup>
-                        </Card>
+                    <Row className="align-items-stretch g-3">
+                        <Col lg={6} md={12}>
+                            <Card className="info-card h-100">
+                                <Form className="m-2">
+                                    <h3>Upload your Cubeast and Acubemy CSV files:</h3>
+                                    <FormControl type="file" id="uploaded_data" accept=".csv" multiple />
+                                </Form>
+                                <ButtonGroup className="m-2">
+                                    <Button className="col-8" variant="success" disabled={this.state.isParsing} onClick={() => { this.showFileData(); }}>
+                                        {this.state.isParsing ? "Parsing..." : "Display My Stats!"}
+                                    </Button>
+                                    <Button className="col-4" disabled={this.state.isParsing} onClick={() => { this.showTestData(); }}>
+                                        {this.state.isParsing ? "Parsing..." : "Display Test Stats!"}
+                                    </Button>
+                                </ButtonGroup>
+                            </Card>
+                        </Col>
+
+                        {this.state.solves.length > 0 && this.state.currentMethod === MethodName.CFOP && (
+                            <Col lg={6} md={12}>
+                                <Card className="info-card h-100">
+                                    <Card.Body>
+                                        <Card.Title>Step Presets</Card.Title>
+                                        <div className="d-flex flex-wrap gap-2">
+                                            {CFOP_PRESETS.map(preset => (
+                                                <Button
+                                                    key={preset.label}
+                                                    variant="outline-primary"
+                                                    onClick={() => this.filterPanelRef.current?.applyStepsPreset(preset.steps)}
+                                                >
+                                                    {preset.label}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </Card.Body>
+                                </Card>
+                            </Col>
+                        )}
                     </Row>
 
                     <FilterPanel
+                        ref={this.filterPanelRef}
                         solves={this.state.solves}
                         suggestedMethod={this.state.suggestedMethod}
                         suggestedSessions={this.state.suggestedSessions}
                         suggestedWindowSize={this.state.suggestedWindowSize}
                         showTestAlert={this.state.showTestAlert}
                         isParsing={this.state.isParsing}
+                        onMethodChange={(m) => this.setState({ currentMethod: m })}
                     />
                 </Container>
             </div >

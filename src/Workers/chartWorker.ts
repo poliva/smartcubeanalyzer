@@ -241,6 +241,7 @@ function buildCaseData(solves: Solve[], steps: StepName[], windowSize: number, u
     type CaseRow = { recognitionTime: number; executionTime: number; preAufTime: number; postAufTime: number; turns: number };
     const caseTimes: { [id: string]: CaseRow[] } = {};
     for (const s of recentSolves) {
+        if (!s.steps[0]?.case) continue;
         if (!(s.steps[0].case in caseTimes)) caseTimes[s.steps[0].case] = [];
         caseTimes[s.steps[0].case].push({
             recognitionTime: s.recognitionTime,

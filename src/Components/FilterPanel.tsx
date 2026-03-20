@@ -423,7 +423,15 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             method: newValue!,
             filters: { ...this.state.filters, method: newMethod, steps: Const.MethodSteps[newMethod] },
             chosenSteps: FilterPanel.getStepOptionsForMethod(newMethod)
-        })
+        });
+        this.props.onMethodChange?.(newMethod);
+    }
+
+    applyStepsPreset(steps: StepName[]) {
+        this.setState({
+            filters: { ...this.state.filters, steps },
+            chosenSteps: steps.map(s => ({ label: s, value: s })),
+        });
     }
 
     pllChanged(selectedList: any[]) {

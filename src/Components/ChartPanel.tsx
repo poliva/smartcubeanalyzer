@@ -58,9 +58,23 @@ const BEST_SOLVES_COLS = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState> {
+export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState & { _propsKey?: string }> {
     static contextType = ThemeContext;
-    state: ChartPanelState = { chartData: null, isComputing: false };
+    state: ChartPanelState & { _propsKey?: string } = { chartData: null, isComputing: false };
+
+    static getDerivedStateFromProps(
+        nextProps: ChartPanelProps,
+        prevState: ChartPanelState & { _propsKey?: string }
+    ): Partial<ChartPanelState & { _propsKey?: string }> | null {
+        const propsKey = [
+            nextProps.steps.join(','),
+            nextProps.methodName,
+        ].join('|');
+        if (prevState._propsKey !== propsKey) {
+            return { chartData: null, isComputing: true, _propsKey: propsKey };
+        }
+        return null;
+    }
 
     private _worker: Worker | null = null;
     private _pendingRequestId = 0;
@@ -119,7 +133,7 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
         const p = this.props;
         this._pendingRequestId++;
         this._updatePropsRefs();
-        this.setState({ isComputing: true });
+        this.setState({ isComputing: true, chartData: null });
         this._worker.postMessage({
             requestId: this._pendingRequestId,
             solves: p.solves,
@@ -190,7 +204,7 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
         const ollIndex = p.steps.indexOf(StepName.OLL);
         const pllIndex = p.steps.indexOf(StepName.PLL);
 
-        if (p.steps.length === 1 && (p.steps[0] === StepName.OLL || p.steps[0] === StepName.PLL)) {
+        if (p.steps.length === 1 && (p.steps[0] === StepName.OLL || p.steps[0] === StepName.PLL) && c.caseData) {
             charts.push(buildChartHtml(
                 <Bar data={c.caseData as ChartData<"bar">} options={createOptions(ChartType.Bar, "Case", "Time (s)", p.useLogScale, true, false, isDark)} />,
                 "Average Recognition Time and Execution Time per Case",

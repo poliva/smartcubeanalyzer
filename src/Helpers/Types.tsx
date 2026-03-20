@@ -138,7 +138,8 @@ export interface FilterPanelProps {
     suggestedSessions?: Option[],
     suggestedWindowSize?: number,
     showTestAlert?: boolean,
-    isParsing?: boolean
+    isParsing?: boolean,
+    onMethodChange?: (method: MethodName) => void
 }
 
 export interface FilterPanelState {
@@ -183,7 +184,8 @@ export interface FileInputState {
     suggestedSessions?: Option[],
     suggestedWindowSize?: number,
     showTestAlert?: boolean,
-    isParsing: boolean
+    isParsing: boolean,
+    currentMethod: MethodName
 }
 
 export interface ChartPanelProps {
