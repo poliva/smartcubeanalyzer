@@ -4,7 +4,7 @@ import moment from "moment";
 import DatePicker from "react-datepicker";
 import Select from "react-select";
 import { MultiSelect } from "react-multi-select-component";
-import { CrossColor, FilterPanelProps, FilterPanelState, Filters, MethodName, Option, Solve, SolveCleanliness, SolveLuckiness, Step, StepName } from "../Helpers/Types";
+import { CrossColor, FilterPanelProps, FilterPanelState, Filters, getStep, MethodName, Option, Solve, SolveCleanliness, SolveLuckiness, Step, StepName } from "../Helpers/Types";
 import { ChartPanel } from "./ChartPanel";
 import { calculateMovingAverage, calculateMovingStdDev } from "../Helpers/MathHelpers";
 import { FormControl, Card, Row, Offcanvas, Col, Button, Tooltip, OverlayTrigger, Alert, Container, CardText, Spinner } from 'react-bootstrap';
@@ -97,11 +97,11 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         }
 
         // TODO: check case logic properly
-        const pllStep = solve.steps.find(s => s.name === StepName.PLL);
+        const pllStep = getStep(solve, StepName.PLL);
         if (solve.method == MethodName.CFOP && pllStep?.case !== undefined && filters.pllCases.indexOf(pllStep.case) < 0) {
             return false;
         }
-        const ollStep = solve.steps.find(s => s.name === StepName.OLL);
+        const ollStep = getStep(solve, StepName.OLL);
         if (solve.method == MethodName.CFOP && ollStep?.case !== undefined && filters.ollCases.indexOf(ollStep.case) < 0) {
             return false;
         }
@@ -148,8 +148,8 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         let mistakes: boolean[][] = [];
 
         mistakes.push(this.getMistakeMap(allSolves.map(x => x.time), windowSize));
-        for (let i = 0; i < allSolves[0].steps.length; i++) {
-            mistakes.push(this.getMistakeMap(allSolves.map(x => x.steps[i].time), windowSize))
+        for (const stepName of allSolves[0].steps.map(s => s.name)) {
+            mistakes.push(this.getMistakeMap(allSolves.map(x => x.steps.find(s => s.name === stepName)?.time ?? 0), windowSize));
         }
 
         let newSolves: Solve[] = [];

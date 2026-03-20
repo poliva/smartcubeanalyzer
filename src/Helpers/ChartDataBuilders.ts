@@ -13,7 +13,7 @@ import {
     splitIntoChunks,
     getTypicalAverages,
 } from './MathHelpers';
-import { CrossColor, Solve, StepName } from './Types';
+import { CrossColor, getStep, Solve, StepName } from './Types';
 import { OllEdgeOrientation, PllCornerPermutation } from './Types';
 import { SEGMENT_COLORS } from './ChartColors';
 
@@ -289,7 +289,7 @@ export function buildStepPercentages(
     const n = recentSolves.length || 1;
     for (const solve of recentSolves) {
         for (const step of steps) {
-            const stepData = solve.steps.find((s) => s.name === step);
+            const stepData = getStep(solve, step);
             if (stepData) totals[step]! += stepData.time;
         }
     }
@@ -315,7 +315,7 @@ export function buildOllCategoryChart(
     const checkIfLine = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Line;
     const checkIfAngle = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Angle;
     const checkIfCross = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Cross;
-    const cases = solves.map((x) => x.steps.find(s => s.name === StepName.OLL)?.case ?? '');
+    const cases = solves.map((x) => getStep(x, StepName.OLL)?.case ?? '');
     let movingDot = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfDot), pointsPerGraph);
     let movingLine = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfLine), pointsPerGraph);
     let movingAngle = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfAngle), pointsPerGraph);
@@ -341,7 +341,7 @@ export function buildPllCategoryChart(
     const checkIfSolved = (c: string) => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Solved;
     const checkIfAdjacent = (c: string) => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Adjacent;
     const checkIfDiagonal = (c: string) => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Diagonal;
-    const cases = solves.map((x) => x.steps.find(s => s.name === StepName.PLL)?.case ?? '');
+    const cases = solves.map((x) => getStep(x, StepName.PLL)?.case ?? '');
     let movingSolved = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfSolved), pointsPerGraph);
     let movingAdjacent = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfAdjacent), pointsPerGraph);
     let movingDiagonal = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfDiagonal), pointsPerGraph);
@@ -408,13 +408,13 @@ export function buildTypicalCompare(solves: Solve[], windowSize: number): ChartD
             ],
         };
     }
-    const crossAverage = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.Cross)?.time ?? 0).slice(-windowSize));
-    const f2l1 = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.F2L_1)?.time ?? 0).slice(-windowSize));
-    const f2l2 = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.F2L_2)?.time ?? 0).slice(-windowSize));
-    const f2l3 = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.F2L_3)?.time ?? 0).slice(-windowSize));
-    const f2l4 = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.F2L_4)?.time ?? 0).slice(-windowSize));
-    const ollAverage = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.OLL)?.time ?? 0).slice(-windowSize));
-    const pllAverage = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.PLL)?.time ?? 0).slice(-windowSize));
+    const crossAverage = calculateAverage(solves.map((x) => getStep(x, StepName.Cross)?.time ?? 0).slice(-windowSize));
+    const f2l1 = calculateAverage(solves.map((x) => getStep(x, StepName.F2L_1)?.time ?? 0).slice(-windowSize));
+    const f2l2 = calculateAverage(solves.map((x) => getStep(x, StepName.F2L_2)?.time ?? 0).slice(-windowSize));
+    const f2l3 = calculateAverage(solves.map((x) => getStep(x, StepName.F2L_3)?.time ?? 0).slice(-windowSize));
+    const f2l4 = calculateAverage(solves.map((x) => getStep(x, StepName.F2L_4)?.time ?? 0).slice(-windowSize));
+    const ollAverage = calculateAverage(solves.map((x) => getStep(x, StepName.OLL)?.time ?? 0).slice(-windowSize));
+    const pllAverage = calculateAverage(solves.map((x) => getStep(x, StepName.PLL)?.time ?? 0).slice(-windowSize));
     const f2lAverage = f2l1 + f2l2 + f2l3 + f2l4;
     const yourAverages = [crossAverage, f2lAverage, ollAverage, pllAverage];
     const typicalAverages = getTypicalAverages(average);

@@ -29,6 +29,7 @@ import {
     AlgoPracticeRow,
     CaseStats,
     FastestSolve,
+    getStep,
     MethodName,
     RecordRow,
     Solve,
@@ -153,7 +154,7 @@ function buildStepAverages(solves: Solve[], steps: StepName[], windowSize: numbe
         return { labels: [], datasets: [] };
     }
     const datasets = steps.map((stepName) => {
-        let average = calculateMovingAverage(solves.map(x => x.steps.find(s => s.name === stepName)?.time ?? 0), windowSize);
+        let average = calculateMovingAverage(solves.map(x => getStep(x, stepName)?.time ?? 0), windowSize);
         average = reduceDataset(average, pointsPerGraph);
         return { label: `${stepName} Average of ${windowSize}`, data: average };
     });
@@ -241,14 +242,15 @@ function buildCaseData(solves: Solve[], steps: StepName[], windowSize: number, u
     type CaseRow = { recognitionTime: number; executionTime: number; preAufTime: number; postAufTime: number; turns: number };
     const caseTimes: { [id: string]: CaseRow[] } = {};
     for (const s of recentSolves) {
-        if (!s.steps[0]?.case) continue;
-        if (!(s.steps[0].case in caseTimes)) caseTimes[s.steps[0].case] = [];
-        caseTimes[s.steps[0].case].push({
+        const step = getStep(s, steps[0]);
+        if (!step?.case) continue;
+        if (!(step.case in caseTimes)) caseTimes[step.case] = [];
+        caseTimes[step.case].push({
             recognitionTime: s.recognitionTime,
             executionTime: s.executionTime - s.preAufTime - s.postAufTime,
             preAufTime: s.preAufTime,
             postAufTime: s.postAufTime,
-            turns: s.steps[0].turns,
+            turns: step.turns,
         });
     }
 
@@ -299,12 +301,12 @@ function buildAlgorithmPracticeRows(solves: Solve[], steps: StepName[], windowSi
     const recentSolves = solves.slice(-windowSize);
     const caseStats = computeCaseFailureStats(recentSolves, steps[0]);
     return caseStats.map((cs: CaseStats) => {
-        const matchingSolves = recentSolves.filter((s: Solve) => s.steps.find(st => st.name === steps[0])?.case === cs.caseName);
+        const matchingSolves = recentSolves.filter((s: Solve) => getStep(s, steps[0])?.case === cs.caseName);
         const avgTime = matchingSolves.length > 0
-            ? matchingSolves.reduce((sum: number, s: Solve) => sum + s.steps[0].time, 0) / matchingSolves.length
+            ? matchingSolves.reduce((sum: number, s: Solve) => sum + (getStep(s, steps[0])?.time ?? 0), 0) / matchingSolves.length
             : 0;
         const avgWasted = matchingSolves.length > 0
-            ? matchingSolves.reduce((sum: number, s: Solve) => sum + analyzeStepMoves(s.steps[0].moves, getAufMovesForSolve(s)).wastedMoves, 0) / matchingSolves.length
+            ? matchingSolves.reduce((sum: number, s: Solve) => sum + analyzeStepMoves(getStep(s, steps[0])?.moves ?? '', getAufMovesForSolve(s)).wastedMoves, 0) / matchingSolves.length
             : 0;
         return {
             case: cs.caseName,

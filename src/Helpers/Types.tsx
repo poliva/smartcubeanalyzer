@@ -128,6 +128,11 @@ export interface Solve {
     isFullStep: boolean
 }
 
+/** Returns the step with the given name from a solve's steps array. */
+export function getStep(solve: Solve, name: StepName): Step | undefined {
+    return solve.steps.find(s => s.name === name);
+}
+
 export interface AppState {
     solves: Solve[]
 }

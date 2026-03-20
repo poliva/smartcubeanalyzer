@@ -1,5 +1,5 @@
 import { AUF_MOVES, ROTATIONS, getAufMovesForSolve, tokenizeMoves } from "./CsvParser";
-import { AufInefficiency, CaseStats, MoveAnalysisResult, RedundantPair, Solve, SolveEfficiency, Step, StepName } from "./Types";
+import { AufInefficiency, CaseStats, getStep, MoveAnalysisResult, RedundantPair, Solve, SolveEfficiency, Step, StepName } from "./Types";
 
 /**
  * Parses a single move token into its face (including wide-move prefix)
@@ -159,7 +159,7 @@ export function computeCaseFailureStats(
     const caseMap: { [caseName: string]: CaseInstance[] } = {};
 
     for (const solve of solves) {
-        const step = solve.steps.find(s => s.name === stepName);
+        const step = getStep(solve, stepName);
         if (!step || !step.case) continue;
 
         const caseName = step.case;
@@ -245,7 +245,7 @@ export function computeSolveEfficiency(
     let hadOllFailure = false;
     let hadPllFailure = false;
 
-    const ollStep = solve.steps.find(s => s.name === StepName.OLL);
+    const ollStep = getStep(solve, StepName.OLL);
     if (ollStep && ollStep.case && ollCaseStats) {
         const stats = ollCaseStats.get(ollStep.case);
         if (stats) {
@@ -254,7 +254,7 @@ export function computeSolveEfficiency(
         }
     }
 
-    const pllStep = solve.steps.find(s => s.name === StepName.PLL);
+    const pllStep = getStep(solve, StepName.PLL);
     if (pllStep && pllStep.case && pllCaseStats) {
         const stats = pllCaseStats.get(pllStep.case);
         if (stats) {
