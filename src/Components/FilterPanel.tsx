@@ -9,7 +9,7 @@ import { ChartPanel } from "./ChartPanel";
 import { calculateMovingAverage, calculateMovingStdDev } from "../Helpers/MathHelpers";
 import { FormControl, Card, Row, Offcanvas, Col, Button, Tooltip, OverlayTrigger, Alert, Container, CardText, Spinner } from 'react-bootstrap';
 import { Const } from "../Helpers/Constants";
-import { CalculateAllSessionOptions, CalculateWindowSize } from "../Helpers/CubeHelpers";
+import { CalculateAllSessionOptions, CalculateBenchmarkTimes, CalculateWindowSize } from "../Helpers/CubeHelpers";
 import ReactSwitch from "react-switch";
 
 export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelState> {
@@ -58,6 +58,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         chosenOLLs: Const.OllCases,
         tabKey: 1,
         autoWindowSize: true,
+        autoBenchmarks: true,
         windowSize: Const.DefaultWindowSize,
         pointsPerGraph: 100,
         showFilters: false,
@@ -278,6 +279,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                 chosenSources: prevState.chosenSources,
                 tabKey: prevState.tabKey,
                 autoWindowSize: prevState.autoWindowSize,
+                autoBenchmarks: prevState.autoBenchmarks,
                 windowSize: prevState.windowSize,
                 pointsPerGraph: prevState.pointsPerGraph,
                 showFilters: prevState.showFilters,
@@ -309,6 +311,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             chosenSources: prevState.chosenSources,
             tabKey: prevState.tabKey,
             autoWindowSize: prevState.autoWindowSize,
+            autoBenchmarks: prevState.autoBenchmarks,
             windowSize: prevState.windowSize,
             pointsPerGraph: prevState.pointsPerGraph,
             showFilters: prevState.showFilters,
@@ -349,6 +352,11 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             newState.windowSize = 5;
         }
         newState.filteredSolves = FilterPanel.applyFiltersToSolves(nextProps.solves, newState.filters, newState.windowSize);
+        if (newState.autoBenchmarks) {
+            const bench = CalculateBenchmarkTimes(newState.filteredSolves);
+            newState.goodTime = bench.goodTime;
+            newState.badTime = bench.badTime;
+        }
         newState.compressedSolves = FilterPanel.compressSolves(newState.filteredSolves, newState.filters.steps);
         newState.lastAppliedSolves = nextProps.solves;
         newState.lastAppliedFilters = newState.filters;
@@ -519,6 +527,21 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         });
     }
 
+    setAutoBenchmarks(checked: boolean) {
+        if (!checked) {
+            this.setState({ autoBenchmarks: false });
+            return;
+        }
+
+        const baseSolves = this.state.filteredSolves.length > 0 ? this.state.filteredSolves : this.state.allSolves;
+        const bench = CalculateBenchmarkTimes(baseSolves);
+        this.setState({
+            autoBenchmarks: true,
+            goodTime: bench.goodTime,
+            badTime: bench.badTime
+        });
+    }
+
     setPointsPerGraph(event: React.ChangeEvent<HTMLInputElement>) {
         this.setState({ pointsPerGraph: parseInt(event.target.value) })
     }
@@ -565,6 +588,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         const allSessions = CalculateAllSessionOptions(this.state.allSolves);
         const method = this.state.method;
         const methodName = method.value as MethodName;
+        const bench = CalculateBenchmarkTimes(this.state.allSolves);
         this.setState({
             filters: {
                 sources: ['cubeast', 'acubemy'],
@@ -603,8 +627,9 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             solveCleanliness: Const.solveCleanliness,
             solveLuckiness: Const.solveLuckiness,
             autoWindowSize: true,
-            badTime: 20,
-            goodTime: 15,
+            autoBenchmarks: true,
+            badTime: bench.badTime,
+            goodTime: bench.goodTime,
             useLogScale: false,
             use4SegmentTiming: true,
         });
@@ -691,7 +716,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                     {this.createFilterHtml(
                         <></>,
                         `Showing ${this.state.filteredSolves.length} / ${this.state.allSolves.length} solves`,
-                        "If you notice that not all your solves are appearing, even when no filters are chosen, either those solves are corrupt, or cubeast exported a comma in its CSV incorrectly."
+                        "If you notice that not all your solves are appearing, even when no filters are chosen, either those solves are corrupt, or the source exported a comma in its CSV incorrectly."
                     )}
 
                     {this.createFilterHtml(
@@ -817,16 +842,20 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                     )}
 
                     {this.createFilterHtml(
-                        <div className="row">
-                            <div className="form-outline col-6" >
-                                <FormControl min="0" max="300" type="number" id="goodTime" value={this.state.goodTime} onChange={this.setGoodTime.bind(this)} />
+                        <div className="row align-items-center g-2">
+                            <div className="col-auto d-flex align-items-center gap-2">
+                                <span className="small">Auto</span>
+                                <ReactSwitch id="autoBenchmarks" checked={this.state.autoBenchmarks} onChange={this.setAutoBenchmarks.bind(this)} />
                             </div>
-                            <div className="form-outline col-6" >
-                                <FormControl min="0" max="300" type="number" id="badTime" value={this.state.badTime} onChange={this.setBadTime.bind(this)} />
+                            <div className="col">
+                                <FormControl min="0" max="300" type="number" id="goodTime" value={this.state.goodTime} onChange={this.setGoodTime.bind(this)} disabled={this.state.autoBenchmarks} />
+                            </div>
+                            <div className="col">
+                                <FormControl min="0" max="300" type="number" id="badTime" value={this.state.badTime} onChange={this.setBadTime.bind(this)} disabled={this.state.autoBenchmarks} />
                             </div>
                         </div>,
                         "Benchmarks",
-                        "Choose what you consider a 'good' solve and a 'bad' solve"
+                        "Choose what you consider a 'good' solve and a 'bad' solve. When Auto is enabled, good/bad are calculated from your current Ao100 and +25% for bad."
                     )}
 
                     {this.createFilterHtml(

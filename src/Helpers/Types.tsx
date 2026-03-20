@@ -168,6 +168,7 @@ export interface FilterPanelState {
     chosenSources: Option[],
     tabKey: number,
     autoWindowSize: boolean,
+    autoBenchmarks: boolean,
     windowSize: number,
     pointsPerGraph: number,
     showFilters: boolean,
