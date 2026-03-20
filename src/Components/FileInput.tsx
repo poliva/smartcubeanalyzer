@@ -11,11 +11,11 @@ import ReactGA from 'react-ga4';
 import { ThemeContext } from "../contexts/ThemeContext";
 
 const CFOP_PRESETS: { label: string; steps: StepName[] }[] = [
-    { label: 'Full CFOP',     steps: [StepName.Cross, StepName.F2L_1, StepName.F2L_2, StepName.F2L_3, StepName.F2L_4, StepName.OLL, StepName.PLL] },
-    { label: 'OLL',           steps: [StepName.OLL] },
-    { label: 'PLL',           steps: [StepName.PLL] },
-    { label: 'Cross + F2L 1', steps: [StepName.Cross, StepName.F2L_1] },
-    { label: 'All F2L',       steps: [StepName.F2L_1, StepName.F2L_2, StepName.F2L_3, StepName.F2L_4] },
+    { label: 'Cross+1',    steps: [StepName.Cross, StepName.F2L_1] },
+    { label: 'All F2L',   steps: [StepName.F2L_1, StepName.F2L_2, StepName.F2L_3, StepName.F2L_4] },
+    { label: 'OLL',       steps: [StepName.OLL] },
+    { label: 'PLL',       steps: [StepName.PLL] },
+    { label: 'Full Solve', steps: [StepName.Cross, StepName.F2L_1, StepName.F2L_2, StepName.F2L_3, StepName.F2L_4, StepName.OLL, StepName.PLL] },
 ];
 
 export class FileInput extends React.Component<FileInputProps, FileInputState> {
@@ -127,6 +127,17 @@ export class FileInput extends React.Component<FileInputProps, FileInputState> {
             <div>
                 <header className={"header"}>
                     <Navbar>
+                        {this.state.solves.length > 0 && (
+                            <Button
+                                variant="primary"
+                                className="me-3"
+                                style={{ fontSize: '1.2rem', lineHeight: 1, padding: '0.35rem 0.65rem' }}
+                                onClick={() => this.filterPanelRef.current?.showFilters()}
+                                aria-label="Open filters"
+                            >
+                                &#9776;
+                            </Button>
+                        )}
                         <Navbar.Brand>
                             Smartcube Analyzer
                         </Navbar.Brand>

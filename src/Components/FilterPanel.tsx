@@ -851,7 +851,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         if (this.state.allSolves.length > 0) {
             analysis = (
                 <div>
-                    <Row>
+                    <Row className="mt-3">
                         <Alert show={this.state.showTestAlert} variant={"warning"}>
                             <Alert.Heading>Warning: Viewing Test Data</Alert.Heading>
                             These are not your solves, these are the dev's personal solves, just to show off the capabilities of this website! To view your solves, upload a CSV file, and click "Display My Stats"
@@ -861,20 +861,6 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                                 </Button>
                             </div>
                         </Alert>
-                        <Col className="col-auto m-0 p-0">
-                            <Container className="m-0 p-0">
-                                <Button className="position-fixed" onClick={this.showFilters.bind(this)}>
-                                    <CardText>
-                                        →
-                                    </CardText>
-                                </Button>
-                                <Button onClick={this.showFilters.bind(this)} style={{ visibility: "hidden" }}>
-                                    <CardText>
-                                        →
-                                    </CardText>
-                                </Button>
-                            </Container>
-                        </Col>
                         <Col>
                             <ChartPanel
                                 windowSize={this.state.windowSize}
