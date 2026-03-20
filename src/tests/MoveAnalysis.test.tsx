@@ -147,7 +147,7 @@ describe('computeCaseFailureStats', () => {
             makeSolveWithPll("11", "T", failedAlg, 28, 2),
         ];
 
-        const stats = computeCaseFailureStats(solves, 6);
+        const stats = computeCaseFailureStats(solves, StepName.PLL);
         const tCase = stats.find(s => s.caseName === "T");
         expect(tCase).toBeDefined();
         expect(tCase!.totalCount).toBe(11);
@@ -161,13 +161,13 @@ describe('computeCaseFailureStats', () => {
             makeSolveWithPll("2", "T", "R U R'", 3),
         ];
 
-        const stats = computeCaseFailureStats(solves, 6);
+        const stats = computeCaseFailureStats(solves, StepName.PLL);
         expect(stats.find(s => s.caseName === "Solved")).toBeUndefined();
         expect(stats.find(s => s.caseName === "T")).toBeDefined();
     });
 
     test('returns empty for no solves', () => {
-        const stats = computeCaseFailureStats([], 6);
+        const stats = computeCaseFailureStats([], StepName.PLL);
         expect(stats).toEqual([]);
     });
 
@@ -179,7 +179,7 @@ describe('computeCaseFailureStats', () => {
             makeSolveWithPll("2", "T", alg, 14, 1),
             makeSolveWithPll("3", "T", alg, 14, 1),
         ];
-        const stats = computeCaseFailureStats(solves, 6);
+        const stats = computeCaseFailureStats(solves, StepName.PLL);
         const tCase = stats.find(s => s.caseName === "T");
         expect(tCase).toBeDefined();
         expect(tCase!.expectedMovesBase).toBe(14);

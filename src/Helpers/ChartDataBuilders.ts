@@ -308,7 +308,6 @@ export function buildStepPercentages(
 
 export function buildOllCategoryChart(
     solves: Solve[],
-    ollStepIndex: number,
     windowSize: number,
     pointsPerGraph: number
 ): ChartData<'line'> {
@@ -316,7 +315,7 @@ export function buildOllCategoryChart(
     const checkIfLine = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Line;
     const checkIfAngle = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Angle;
     const checkIfCross = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Cross;
-    const cases = solves.map((x) => x.steps[ollStepIndex]?.case ?? '');
+    const cases = solves.map((x) => x.steps.find(s => s.name === StepName.OLL)?.case ?? '');
     let movingDot = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfDot), pointsPerGraph);
     let movingLine = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfLine), pointsPerGraph);
     let movingAngle = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfAngle), pointsPerGraph);
@@ -336,14 +335,13 @@ export function buildOllCategoryChart(
 
 export function buildPllCategoryChart(
     solves: Solve[],
-    pllStepIndex: number,
     windowSize: number,
     pointsPerGraph: number
 ): ChartData<'line'> {
     const checkIfSolved = (c: string) => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Solved;
     const checkIfAdjacent = (c: string) => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Adjacent;
     const checkIfDiagonal = (c: string) => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Diagonal;
-    const cases = solves.map((x) => x.steps[pllStepIndex]?.case ?? '');
+    const cases = solves.map((x) => x.steps.find(s => s.name === StepName.PLL)?.case ?? '');
     let movingSolved = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfSolved), pointsPerGraph);
     let movingAdjacent = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfAdjacent), pointsPerGraph);
     let movingDiagonal = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfDiagonal), pointsPerGraph);
@@ -410,13 +408,13 @@ export function buildTypicalCompare(solves: Solve[], windowSize: number): ChartD
             ],
         };
     }
-    const crossAverage = calculateAverage(solves.map((x) => x.steps[0].time).slice(-windowSize));
-    const f2l1 = calculateAverage(solves.map((x) => x.steps[1].time).slice(-windowSize));
-    const f2l2 = calculateAverage(solves.map((x) => x.steps[2].time).slice(-windowSize));
-    const f2l3 = calculateAverage(solves.map((x) => x.steps[3].time).slice(-windowSize));
-    const f2l4 = calculateAverage(solves.map((x) => x.steps[4].time).slice(-windowSize));
-    const ollAverage = calculateAverage(solves.map((x) => x.steps[5].time).slice(-windowSize));
-    const pllAverage = calculateAverage(solves.map((x) => x.steps[6].time).slice(-windowSize));
+    const crossAverage = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.Cross)?.time ?? 0).slice(-windowSize));
+    const f2l1 = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.F2L_1)?.time ?? 0).slice(-windowSize));
+    const f2l2 = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.F2L_2)?.time ?? 0).slice(-windowSize));
+    const f2l3 = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.F2L_3)?.time ?? 0).slice(-windowSize));
+    const f2l4 = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.F2L_4)?.time ?? 0).slice(-windowSize));
+    const ollAverage = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.OLL)?.time ?? 0).slice(-windowSize));
+    const pllAverage = calculateAverage(solves.map((x) => x.steps.find(s => s.name === StepName.PLL)?.time ?? 0).slice(-windowSize));
     const f2lAverage = f2l1 + f2l2 + f2l3 + f2l4;
     const yourAverages = [crossAverage, f2lAverage, ollAverage, pllAverage];
     const typicalAverages = getTypicalAverages(average);

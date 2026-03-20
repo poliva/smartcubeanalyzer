@@ -201,8 +201,8 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
         const c = chartData;
         const charts: JSX.Element[] = [];
 
-        const ollIndex = p.steps.indexOf(StepName.OLL);
-        const pllIndex = p.steps.indexOf(StepName.PLL);
+        const hasOll = p.steps.includes(StepName.OLL);
+        const hasPll = p.steps.includes(StepName.PLL);
 
         if (p.steps.length === 1 && (p.steps[0] === StepName.OLL || p.steps[0] === StepName.PLL) && c.caseData) {
             charts.push(buildChartHtml(
@@ -237,11 +237,11 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
         charts.push(buildChartHtml(<Line data={c.dailyRecord as ChartData<"line">} options={createOptions(ChartType.Line, "Date", "Time (s)", p.useLogScale, true, true, isDark)} />, "Daily Fastest Solve", "This chart shows the fastest solve for each day, based on the selected filters"));
         charts.push(buildChartHtml(<DataGrid rows={c.recordRows as RecordRow[]} columns={RECORD_COLS} />, "Current Records", "This chart shows your current records for Single, Ao5, Ao12, Ao100, and Ao1000"));
 
-        if (ollIndex !== -1) {
+        if (hasOll) {
             charts.push(buildChartHtml(<Line data={c.ollCategory as ChartData<"line">} options={createOptions(ChartType.Line, "Solve Number", "Percentage", p.useLogScale, true, false, isDark)} />, "OLL Edge Orientation", "This chart shows your percentage of OLL cases by edge orientation"));
         }
 
-        if (pllIndex !== -1) {
+        if (hasPll) {
             charts.push(buildChartHtml(<Line data={c.pllCategory as ChartData<"line">} options={createOptions(ChartType.Line, "Solve Number", "Percentage", p.useLogScale, true, false, isDark)} />, "PLL Corner Permutation", "This chart shows your percentage of PLL cases by corner permutation"));
         }
 

@@ -97,10 +97,12 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         }
 
         // TODO: check case logic properly
-        if (solve.method == MethodName.CFOP && solve.steps[6].case !== undefined && filters.pllCases.indexOf(solve.steps[6].case) < 0) {
+        const pllStep = solve.steps.find(s => s.name === StepName.PLL);
+        if (solve.method == MethodName.CFOP && pllStep?.case !== undefined && filters.pllCases.indexOf(pllStep.case) < 0) {
             return false;
         }
-        if (solve.method == MethodName.CFOP && solve.steps[5].case !== undefined && filters.ollCases.indexOf(solve.steps[5].case) < 0) {
+        const ollStep = solve.steps.find(s => s.name === StepName.OLL);
+        if (solve.method == MethodName.CFOP && ollStep?.case !== undefined && filters.ollCases.indexOf(ollStep.case) < 0) {
             return false;
         }
 

@@ -152,10 +152,10 @@ function buildStepAverages(solves: Solve[], steps: StepName[], windowSize: numbe
     if (solves.length === 0 || steps.length === 0) {
         return { labels: [], datasets: [] };
     }
-    const datasets = steps.map((_, i) => {
-        let average = calculateMovingAverage(solves.map(x => x.steps[i].time), windowSize);
+    const datasets = steps.map((stepName) => {
+        let average = calculateMovingAverage(solves.map(x => x.steps.find(s => s.name === stepName)?.time ?? 0), windowSize);
         average = reduceDataset(average, pointsPerGraph);
-        return { label: `${solves[0].steps[i].name} Average of ${windowSize}`, data: average };
+        return { label: `${stepName} Average of ${windowSize}`, data: average };
     });
     let labels: string[] = Array.from({ length: datasets[0].data.length }, (_, i) => i.toString());
     labels = reduceDataset(labels, pointsPerGraph);
@@ -193,10 +193,10 @@ function buildRunningEfficiencyData(
     const allStepsSelected = steps.length === Const.MethodSteps[methodName].length;
 
     const ollMap = needOll
-        ? new Map(computeCaseFailureStats(solves, 5).map((s: CaseStats) => [s.caseName, s]))
+        ? new Map(computeCaseFailureStats(solves, StepName.OLL).map((s: CaseStats) => [s.caseName, s]))
         : undefined;
     const pllMap = needPll
-        ? new Map(computeCaseFailureStats(solves, 6).map((s: CaseStats) => [s.caseName, s]))
+        ? new Map(computeCaseFailureStats(solves, StepName.PLL).map((s: CaseStats) => [s.caseName, s]))
         : undefined;
 
     const effList = solves.map((solve: Solve) => computeSolveEfficiency(solve, ollMap, pllMap));
@@ -234,7 +234,7 @@ function buildCaseData(solves: Solve[], steps: StepName[], windowSize: number, u
         return { labels: [], datasets: [] };
     }
     const recentSolves = solves.slice(-windowSize);
-    const failureStatsArr = computeCaseFailureStats(recentSolves, 0);
+    const failureStatsArr = computeCaseFailureStats(recentSolves, steps[0]);
     const failureMap: { [k: string]: CaseStats } = {};
     failureStatsArr.forEach((cs: CaseStats) => { failureMap[cs.caseName] = cs; });
 
@@ -297,9 +297,9 @@ function buildAlgorithmPracticeRows(solves: Solve[], steps: StepName[], windowSi
         return [];
     }
     const recentSolves = solves.slice(-windowSize);
-    const caseStats = computeCaseFailureStats(recentSolves, 0);
+    const caseStats = computeCaseFailureStats(recentSolves, steps[0]);
     return caseStats.map((cs: CaseStats) => {
-        const matchingSolves = recentSolves.filter((s: Solve) => s.steps[0] && s.steps[0].case === cs.caseName);
+        const matchingSolves = recentSolves.filter((s: Solve) => s.steps.find(st => st.name === steps[0])?.case === cs.caseName);
         const avgTime = matchingSolves.length > 0
             ? matchingSolves.reduce((sum: number, s: Solve) => sum + s.steps[0].time, 0) / matchingSolves.length
             : 0;
@@ -341,8 +341,8 @@ function computeBestSolvesData(solves: Solve[]): FastestSolve[] {
 
 function computeAllChartData(input: WorkerInput): Record<string, unknown> {
     const { solves, windowSize, pointsPerGraph, steps, goodTime, badTime, methodName, use4SegmentTiming, isDark } = input;
-    const ollIndex = steps.indexOf(StepName.OLL);
-    const pllIndex = steps.indexOf(StepName.PLL);
+    const hasOll = steps.includes(StepName.OLL);
+    const hasPll = steps.includes(StepName.PLL);
 
     const cache: Record<string, unknown> = {
         runningAverage: buildRunningAverageData(solves, windowSize, pointsPerGraph),
@@ -366,8 +366,8 @@ function computeAllChartData(input: WorkerInput): Record<string, unknown> {
         bestSolvesData: computeBestSolvesData(solves),
     };
 
-    if (ollIndex !== -1) cache.ollCategory = buildOllCategoryChart(solves, ollIndex, windowSize, pointsPerGraph);
-    if (pllIndex !== -1) cache.pllCategory = buildPllCategoryChart(solves, pllIndex, windowSize, pointsPerGraph);
+    if (hasOll) cache.ollCategory = buildOllCategoryChart(solves, windowSize, pointsPerGraph);
+    if (hasPll) cache.pllCategory = buildPllCategoryChart(solves, windowSize, pointsPerGraph);
     if (steps.length === 1 && (steps[0] === StepName.OLL || steps[0] === StepName.PLL)) {
         cache.caseData = buildCaseData(solves, steps, windowSize, use4SegmentTiming);
         cache.algoPracticeRows = buildAlgorithmPracticeRows(solves, steps, windowSize);
