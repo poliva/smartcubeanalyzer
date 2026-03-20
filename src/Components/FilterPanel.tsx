@@ -338,7 +338,8 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
             }
         }
         if (newState.autoWindowSize) {
-            newState.windowSize = CalculateWindowSize(nextProps.solves.length);
+            const firstPass = FilterPanel.applyFiltersToSolves(nextProps.solves, newState.filters, newState.windowSize);
+            newState.windowSize = CalculateWindowSize(firstPass.length);
         } else if (!Number.isFinite(newState.windowSize) || newState.windowSize < 5) {
             newState.windowSize = 5;
         }
