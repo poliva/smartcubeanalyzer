@@ -7,7 +7,7 @@ import ReactGA from 'react-ga4';
 function getInitialIsDark(): boolean {
   const stored = localStorage.getItem('theme');
   if (stored === 'dark' || stored === 'light') return stored === 'dark';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return true;
 }
 
 function App() {

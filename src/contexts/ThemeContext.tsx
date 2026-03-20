@@ -6,6 +6,6 @@ export type ThemeContextValue = {
 };
 
 export const ThemeContext = React.createContext<ThemeContextValue>({
-  isDark: false,
+  isDark: true,
   setTheme: () => {},
 });
