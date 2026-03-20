@@ -234,6 +234,14 @@ export function reduceDataset(values: any[], pointsPerGraph: number) {
     return reducedValues;
 }
 
+/** Creates a sequential "1, 2, 3…" label array and reduces it to pointsPerGraph entries. */
+export function makeLabels(length: number, pointsPerGraph: number): string[] {
+    return reduceDataset(
+        Array.from({ length }, (_, i) => (i + 1).toString()),
+        pointsPerGraph
+    );
+}
+
 export function splitIntoChunks(values: any[], chunks: number) {
     let size: number = Math.ceil(values.length / chunks);
     return Array.from({ length: chunks }, (v, i) =>

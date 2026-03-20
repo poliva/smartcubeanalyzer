@@ -9,6 +9,7 @@ import {
     calculateMovingAverage,
     calculateMovingPercentage,
     calculateMovingStdDev,
+    makeLabels,
     reduceDataset,
     splitIntoChunks,
     getTypicalAverages,
@@ -17,87 +18,52 @@ import { CrossColor, getStep, Solve, StepName } from './Types';
 import { OllEdgeOrientation, PllCornerPermutation } from './Types';
 import { SEGMENT_COLORS } from './ChartColors';
 
-export function buildRunningAverageData(
+type MovingCalcFn = (values: number[], windowSize: number) => number[];
+
+function buildMovingLineChart(
     solves: Solve[],
     windowSize: number,
-    pointsPerGraph: number
+    pointsPerGraph: number,
+    series: Array<{ extract: (s: Solve) => number; calcFn: MovingCalcFn; label: string }>
 ): ChartData<'line'> {
-    let movingAverage = calculateMovingAverage(solves.map((x) => x.time), windowSize);
-    let labels = Array.from({ length: movingAverage.length }, (_, i) => (i + 1).toString());
-    movingAverage = reduceDataset(movingAverage, pointsPerGraph);
-    labels = reduceDataset(labels, pointsPerGraph);
+    const allData = series.map(s => s.calcFn(solves.map(s.extract), windowSize));
+    const reducedData = allData.map(d => reduceDataset(d, pointsPerGraph));
+    const labels = makeLabels(allData[0].length, pointsPerGraph);
     return {
         labels,
-        datasets: [{ label: `Average Time Of ${windowSize}`, data: movingAverage }],
+        datasets: series.map((s, i) => ({ label: s.label, data: reducedData[i] })),
     };
 }
 
-export function buildRunningStdDevData(
-    solves: Solve[],
-    windowSize: number,
-    pointsPerGraph: number
-): ChartData<'line'> {
-    let movingStdDev = calculateMovingStdDev(solves.map((x) => x.time), windowSize);
-    let labels = Array.from({ length: movingStdDev.length }, (_, i) => (i + 1).toString());
-    movingStdDev = reduceDataset(movingStdDev, pointsPerGraph);
-    labels = reduceDataset(labels, pointsPerGraph);
-    return {
-        labels,
-        datasets: [{ label: `Average StdDev Of ${windowSize}`, data: movingStdDev }],
-    };
+export function buildRunningAverageData(solves: Solve[], windowSize: number, pointsPerGraph: number): ChartData<'line'> {
+    return buildMovingLineChart(solves, windowSize, pointsPerGraph, [
+        { extract: x => x.time, calcFn: calculateMovingAverage, label: `Average Time Of ${windowSize}` },
+    ]);
 }
 
-export function buildRunningTpsData(
-    solves: Solve[],
-    windowSize: number,
-    pointsPerGraph: number
-): ChartData<'line'> {
-    let movingTps = calculateMovingAverage(solves.map((x) => x.tps), windowSize);
-    let movingTpsExecution = calculateMovingAverage(
-        solves.map((x) => (x.executionTime > 0 ? x.turns / x.executionTime : 0)),
-        windowSize
-    );
-    let labels = Array.from({ length: movingTps.length }, (_, i) => (i + 1).toString());
-    movingTps = reduceDataset(movingTps, pointsPerGraph);
-    movingTpsExecution = reduceDataset(movingTpsExecution, pointsPerGraph);
-    labels = reduceDataset(labels, pointsPerGraph);
-    return {
-        labels,
-        datasets: [
-            { label: `Average TPS Of ${windowSize}`, data: movingTps },
-            { label: `Average TPS During Execution Of ${windowSize}`, data: movingTpsExecution },
-        ],
-    };
+export function buildRunningStdDevData(solves: Solve[], windowSize: number, pointsPerGraph: number): ChartData<'line'> {
+    return buildMovingLineChart(solves, windowSize, pointsPerGraph, [
+        { extract: x => x.time, calcFn: calculateMovingStdDev, label: `Average StdDev Of ${windowSize}` },
+    ]);
 }
 
-export function buildRunningInspectionData(
-    solves: Solve[],
-    windowSize: number,
-    pointsPerGraph: number
-): ChartData<'line'> {
-    let movingInspection = calculateMovingAverage(solves.map((x) => x.inspectionTime), windowSize);
-    let labels = Array.from({ length: movingInspection.length }, (_, i) => (i + 1).toString());
-    movingInspection = reduceDataset(movingInspection, pointsPerGraph);
-    labels = reduceDataset(labels, pointsPerGraph);
-    return {
-        labels,
-        datasets: [{ label: `Average Inspection Of ${windowSize}`, data: movingInspection }],
-    };
+export function buildRunningTpsData(solves: Solve[], windowSize: number, pointsPerGraph: number): ChartData<'line'> {
+    return buildMovingLineChart(solves, windowSize, pointsPerGraph, [
+        { extract: x => x.tps, calcFn: calculateMovingAverage, label: `Average TPS Of ${windowSize}` },
+        { extract: x => x.executionTime > 0 ? x.turns / x.executionTime : 0, calcFn: calculateMovingAverage, label: `Average TPS During Execution Of ${windowSize}` },
+    ]);
 }
 
-export function buildRunningTurnsData(
-    solves: Solve[],
-    windowSize: number,
-    pointsPerGraph: number
-): ChartData<'line'> {
-    let movingAverage = calculateMovingAverage(solves.map((x) => x.turns), windowSize);
-    let labels = Array.from({ length: movingAverage.length }, (_, i) => (i + 1).toString());
-    movingAverage = reduceDataset(movingAverage, pointsPerGraph);
-    labels = reduceDataset(labels, pointsPerGraph);
-    return {
-        labels,
-        datasets: [{ label: `Average Turns Of ${windowSize}`, data: movingAverage }],
-    };
+export function buildRunningInspectionData(solves: Solve[], windowSize: number, pointsPerGraph: number): ChartData<'line'> {
+    return buildMovingLineChart(solves, windowSize, pointsPerGraph, [
+        { extract: x => x.inspectionTime, calcFn: calculateMovingAverage, label: `Average Inspection Of ${windowSize}` },
+    ]);
+}
+
+export function buildRunningTurnsData(solves: Solve[], windowSize: number, pointsPerGraph: number): ChartData<'line'> {
+    return buildMovingLineChart(solves, windowSize, pointsPerGraph, [
+        { extract: x => x.turns, calcFn: calculateMovingAverage, label: `Average Turns Of ${windowSize}` },
+    ]);
 }
 
 export function buildRunningRecognitionExecution(
@@ -108,9 +74,8 @@ export function buildRunningRecognitionExecution(
 ): ChartData<'line'> {
     const colors = SEGMENT_COLORS;
     let movingRecognition = calculateMovingAverage(solves.map((x) => x.recognitionTime), windowSize);
-    let labels = Array.from({ length: movingRecognition.length }, (_, i) => (i + 1).toString());
+    const labels = makeLabels(movingRecognition.length, pointsPerGraph);
     movingRecognition = reduceDataset(movingRecognition, pointsPerGraph);
-    labels = reduceDataset(labels, pointsPerGraph);
 
     if (use4SegmentTiming) {
         const movingPreAuf = reduceDataset(
@@ -224,10 +189,9 @@ export function buildGoodBadData(
         windowSize,
         checkIfGood
     );
-    let labels = Array.from({ length: movingPercentBad.length }, (_, i) => (i + 1).toString());
+    const labels = makeLabels(movingPercentBad.length, pointsPerGraph);
     movingPercentBad = reduceDataset(movingPercentBad, pointsPerGraph);
     movingPercentGood = reduceDataset(movingPercentGood, pointsPerGraph);
-    labels = reduceDataset(labels, pointsPerGraph);
     return {
         labels,
         datasets: [
@@ -273,8 +237,7 @@ export function buildRunningColorPercentages(
             };
         }
     );
-    let labels = Array.from({ length: datasets[0].data.length }, (_, i) => (i + 1).toString());
-    labels = reduceDataset(labels, pointsPerGraph);
+    const labels = makeLabels(datasets[0].data.length, pointsPerGraph);
     return { labels, datasets };
 }
 
@@ -306,55 +269,37 @@ export function buildStepPercentages(
     };
 }
 
-export function buildOllCategoryChart(
+function buildCategoryPercentageChart(
     solves: Solve[],
     windowSize: number,
-    pointsPerGraph: number
+    pointsPerGraph: number,
+    stepName: StepName,
+    categories: Array<{ predicate: (c: string) => boolean; label: string }>
 ): ChartData<'line'> {
-    const checkIfDot = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Dot;
-    const checkIfLine = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Line;
-    const checkIfAngle = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Angle;
-    const checkIfCross = (c: string) => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Cross;
-    const cases = solves.map((x) => getStep(x, StepName.OLL)?.case ?? '');
-    let movingDot = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfDot), pointsPerGraph);
-    let movingLine = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfLine), pointsPerGraph);
-    let movingAngle = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfAngle), pointsPerGraph);
-    let movingCross = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfCross), pointsPerGraph);
-    let labels = Array.from({ length: movingDot.length }, (_, i) => (i + 1).toString());
-    labels = reduceDataset(labels, pointsPerGraph);
-    return {
-        labels,
-        datasets: [
-            { label: `Percentage of OLL Dot Cases over last ${windowSize}`, data: movingDot },
-            { label: `Percentage of OLL Line Cases over last ${windowSize}`, data: movingLine },
-            { label: `Percentage of OLL Angle Cases over last ${windowSize}`, data: movingAngle },
-            { label: `Percentage of OLL Cross Cases over last ${windowSize}`, data: movingCross },
-        ],
-    };
+    const cases = solves.map((x) => getStep(x, stepName)?.case ?? '');
+    const datasets = categories.map(({ predicate, label }) => ({
+        label,
+        data: reduceDataset(calculateMovingPercentage(cases, windowSize, predicate), pointsPerGraph),
+    }));
+    const labels = makeLabels(datasets[0].data.length, pointsPerGraph);
+    return { labels, datasets };
 }
 
-export function buildPllCategoryChart(
-    solves: Solve[],
-    windowSize: number,
-    pointsPerGraph: number
-): ChartData<'line'> {
-    const checkIfSolved = (c: string) => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Solved;
-    const checkIfAdjacent = (c: string) => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Adjacent;
-    const checkIfDiagonal = (c: string) => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Diagonal;
-    const cases = solves.map((x) => getStep(x, StepName.PLL)?.case ?? '');
-    let movingSolved = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfSolved), pointsPerGraph);
-    let movingAdjacent = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfAdjacent), pointsPerGraph);
-    let movingDiagonal = reduceDataset(calculateMovingPercentage(cases, windowSize, checkIfDiagonal), pointsPerGraph);
-    let labels = Array.from({ length: movingSolved.length }, (_, i) => (i + 1).toString());
-    labels = reduceDataset(labels, pointsPerGraph);
-    return {
-        labels,
-        datasets: [
-            { label: `Percentage of PLL Solved Corner Cases over last ${windowSize}`, data: movingSolved },
-            { label: `Percentage of PLL Adjacent Corner Cases over last ${windowSize}`, data: movingAdjacent },
-            { label: `Percentage of PLL Diagonal Corner Cases over last ${windowSize}`, data: movingDiagonal },
-        ],
-    };
+export function buildOllCategoryChart(solves: Solve[], windowSize: number, pointsPerGraph: number): ChartData<'line'> {
+    return buildCategoryPercentageChart(solves, windowSize, pointsPerGraph, StepName.OLL, [
+        { predicate: c => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Dot,   label: `Percentage of OLL Dot Cases over last ${windowSize}` },
+        { predicate: c => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Line,  label: `Percentage of OLL Line Cases over last ${windowSize}` },
+        { predicate: c => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Angle, label: `Percentage of OLL Angle Cases over last ${windowSize}` },
+        { predicate: c => Const.OllEdgeOrientationMapping.get(c) === OllEdgeOrientation.Cross, label: `Percentage of OLL Cross Cases over last ${windowSize}` },
+    ]);
+}
+
+export function buildPllCategoryChart(solves: Solve[], windowSize: number, pointsPerGraph: number): ChartData<'line'> {
+    return buildCategoryPercentageChart(solves, windowSize, pointsPerGraph, StepName.PLL, [
+        { predicate: c => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Solved,   label: `Percentage of PLL Solved Corner Cases over last ${windowSize}` },
+        { predicate: c => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Adjacent, label: `Percentage of PLL Adjacent Corner Cases over last ${windowSize}` },
+        { predicate: c => Const.PllCornerPermutationMapping.get(c) === PllCornerPermutation.Diagonal, label: `Percentage of PLL Diagonal Corner Cases over last ${windowSize}` },
+    ]);
 }
 
 export function buildInspectionData(solves: Solve[], windowSize: number): ChartData<'bar'> {

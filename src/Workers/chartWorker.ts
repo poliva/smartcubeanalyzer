@@ -3,6 +3,7 @@ import {
     calculateMovingAverage,
     calculateMovingPercentage,
     calculateMovingAverageChopped,
+    makeLabels,
     reduceDataset,
 } from '../Helpers/MathHelpers';
 import {
@@ -158,8 +159,7 @@ function buildStepAverages(solves: Solve[], steps: StepName[], windowSize: numbe
         average = reduceDataset(average, pointsPerGraph);
         return { label: `${stepName} Average of ${windowSize}`, data: average };
     });
-    let labels: string[] = Array.from({ length: datasets[0].data.length }, (_, i) => i.toString());
-    labels = reduceDataset(labels, pointsPerGraph);
+    const labels = makeLabels(datasets[0].data.length, pointsPerGraph);
     return { labels, datasets };
 }
 
@@ -204,9 +204,8 @@ function buildRunningEfficiencyData(
     const efficiencies = effList.map(e => e.moveEfficiency * 100);
 
     let movingAvg = calculateMovingAverage(efficiencies, windowSize);
-    let labels: string[] = Array.from({ length: movingAvg.length }, (_, i) => (i + 1).toString());
+    const labels = makeLabels(movingAvg.length, pointsPerGraph);
     movingAvg = reduceDataset(movingAvg, pointsPerGraph);
-    labels = reduceDataset(labels, pointsPerGraph);
 
     const datasets: { label: string; data: number[] }[] = [
         { label: `Move Efficiency % (avg of ${windowSize})`, data: movingAvg },
