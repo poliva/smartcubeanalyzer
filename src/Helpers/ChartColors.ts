@@ -4,38 +4,92 @@
  */
 import type { ChartData } from 'chart.js/auto';
 
+// ── Raw RGB constants ─────────────────────────────────────────────────────────
+// Every unique RGB combination used anywhere in the app lives here.
+
+// Light-mode palette (also reused for segment semantic colors)
+const BLUE         = 'rgb(54, 162, 235)';
+const RED          = 'rgb(255, 99, 132)';
+const TEAL         = 'rgb(75, 192, 192)';
+const ORANGE       = 'rgb(255, 159, 64)';
+const PURPLE       = 'rgb(153, 102, 255)';
+const YELLOW       = 'rgb(255, 205, 86)';
+const TEAL2        = 'rgb(0, 180, 180)';
+const PINK         = 'rgb(220, 100, 180)';
+const SAGE         = 'rgb(100, 160, 100)';
+const CORAL        = 'rgb(230, 120, 80)';
+const SOFT_BLUE    = 'rgb(120, 140, 220)';
+const OLIVE        = 'rgb(180, 180, 80)';
+
+// Dark-mode palette
+const SKY          = 'rgb(100, 200, 255)';
+const ROSE         = 'rgb(255, 130, 160)';
+const AQUA         = 'rgb(100, 220, 220)';
+const PEACH        = 'rgb(255, 190, 120)';
+const VIOLET       = 'rgb(190, 150, 255)';
+const CREAM        = 'rgb(255, 230, 150)';
+const CYAN         = 'rgb(80, 220, 220)';
+const MAGENTA      = 'rgb(255, 150, 220)';
+const MINT         = 'rgb(150, 220, 150)';
+const SALMON       = 'rgb(255, 160, 120)';
+const PERIWINKLE   = 'rgb(160, 180, 255)';
+const CHARTREUSE   = 'rgb(220, 220, 140)';
+
+// ── Helper ────────────────────────────────────────────────────────────────────
+
+/** Convert an rgb() string to rgba() with the given alpha. */
+function a(rgb: string, alpha: number = 0.8): string {
+    return rgb.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
+}
+
+// ── Named exports ─────────────────────────────────────────────────────────────
+
+/** Semantic colors for the four solve-timing segments. */
+export const SEGMENT_COLORS = {
+    recognition: BLUE,
+    preAuf:      PURPLE,
+    execution:   RED,
+    postAuf:     ORANGE,
+} as const;
+
+/** Colors for chart axis grid lines and tick labels in dark mode. */
+export const DARK_AXIS_COLORS = {
+    grid:  'rgba(255,255,255,0.15)',
+    label: 'rgba(255,255,255,0.8)',
+} as const;
+
 export type ChartColorPair = { borderColor: string; backgroundColor: string };
 
 /** Theme-aware palette: at least 12 colors readable on light and dark backgrounds. */
 const LIGHT_PALETTE: ChartColorPair[] = [
-    { borderColor: 'rgb(54, 162, 235)', backgroundColor: 'rgba(54, 162, 235, 0.8)' },
-    { borderColor: 'rgb(255, 99, 132)', backgroundColor: 'rgba(255, 99, 132, 0.8)' },
-    { borderColor: 'rgb(75, 192, 192)', backgroundColor: 'rgba(75, 192, 192, 0.8)' },
-    { borderColor: 'rgb(255, 159, 64)', backgroundColor: 'rgba(255, 159, 64, 0.8)' },
-    { borderColor: 'rgb(153, 102, 255)', backgroundColor: 'rgba(153, 102, 255, 0.8)' },
-    { borderColor: 'rgb(255, 205, 86)', backgroundColor: 'rgba(255, 205, 86, 0.8)' },
-    { borderColor: 'rgb(0, 180, 180)', backgroundColor: 'rgba(0, 180, 180, 0.8)' },
-    { borderColor: 'rgb(220, 100, 180)', backgroundColor: 'rgba(220, 100, 180, 0.8)' },
-    { borderColor: 'rgb(100, 160, 100)', backgroundColor: 'rgba(100, 160, 100, 0.8)' },
-    { borderColor: 'rgb(230, 120, 80)', backgroundColor: 'rgba(230, 120, 80, 0.8)' },
-    { borderColor: 'rgb(120, 140, 220)', backgroundColor: 'rgba(120, 140, 220, 0.8)' },
-    { borderColor: 'rgb(180, 180, 80)', backgroundColor: 'rgba(180, 180, 80, 0.8)' },
+    { borderColor: BLUE,       backgroundColor: a(BLUE) },
+    { borderColor: RED,        backgroundColor: a(RED) },
+    { borderColor: TEAL,       backgroundColor: a(TEAL) },
+    { borderColor: ORANGE,     backgroundColor: a(ORANGE) },
+    { borderColor: PURPLE,     backgroundColor: a(PURPLE) },
+    { borderColor: YELLOW,     backgroundColor: a(YELLOW) },
+    { borderColor: TEAL2,      backgroundColor: a(TEAL2) },
+    { borderColor: PINK,       backgroundColor: a(PINK) },
+    { borderColor: SAGE,       backgroundColor: a(SAGE) },
+    { borderColor: CORAL,      backgroundColor: a(CORAL) },
+    { borderColor: SOFT_BLUE,  backgroundColor: a(SOFT_BLUE) },
+    { borderColor: OLIVE,      backgroundColor: a(OLIVE) },
 ];
 
 /** Dark mode: same hues, higher luminance for readability on dark background. */
 const DARK_PALETTE: ChartColorPair[] = [
-    { borderColor: 'rgb(100, 200, 255)', backgroundColor: 'rgba(100, 200, 255, 0.8)' },
-    { borderColor: 'rgb(255, 130, 160)', backgroundColor: 'rgba(255, 130, 160, 0.8)' },
-    { borderColor: 'rgb(100, 220, 220)', backgroundColor: 'rgba(100, 220, 220, 0.8)' },
-    { borderColor: 'rgb(255, 190, 120)', backgroundColor: 'rgba(255, 190, 120, 0.8)' },
-    { borderColor: 'rgb(190, 150, 255)', backgroundColor: 'rgba(190, 150, 255, 0.8)' },
-    { borderColor: 'rgb(255, 230, 150)', backgroundColor: 'rgba(255, 230, 150, 0.8)' },
-    { borderColor: 'rgb(80, 220, 220)', backgroundColor: 'rgba(80, 220, 220, 0.8)' },
-    { borderColor: 'rgb(255, 150, 220)', backgroundColor: 'rgba(255, 150, 220, 0.8)' },
-    { borderColor: 'rgb(150, 220, 150)', backgroundColor: 'rgba(150, 220, 150, 0.8)' },
-    { borderColor: 'rgb(255, 160, 120)', backgroundColor: 'rgba(255, 160, 120, 0.8)' },
-    { borderColor: 'rgb(160, 180, 255)', backgroundColor: 'rgba(160, 180, 255, 0.8)' },
-    { borderColor: 'rgb(220, 220, 140)', backgroundColor: 'rgba(220, 220, 140, 0.8)' },
+    { borderColor: SKY,        backgroundColor: a(SKY) },
+    { borderColor: ROSE,       backgroundColor: a(ROSE) },
+    { borderColor: AQUA,       backgroundColor: a(AQUA) },
+    { borderColor: PEACH,      backgroundColor: a(PEACH) },
+    { borderColor: VIOLET,     backgroundColor: a(VIOLET) },
+    { borderColor: CREAM,      backgroundColor: a(CREAM) },
+    { borderColor: CYAN,       backgroundColor: a(CYAN) },
+    { borderColor: MAGENTA,    backgroundColor: a(MAGENTA) },
+    { borderColor: MINT,       backgroundColor: a(MINT) },
+    { borderColor: SALMON,     backgroundColor: a(SALMON) },
+    { borderColor: PERIWINKLE, backgroundColor: a(PERIWINKLE) },
+    { borderColor: CHARTREUSE, backgroundColor: a(CHARTREUSE) },
 ];
 
 function getPalette(isDark: boolean): ChartColorPair[] {

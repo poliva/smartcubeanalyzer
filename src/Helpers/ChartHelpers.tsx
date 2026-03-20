@@ -1,5 +1,6 @@
 import { Card, CardText, Col, OverlayTrigger, Ratio, Tooltip } from "react-bootstrap";
 import { ChartType } from "./Types";
+import { DARK_AXIS_COLORS } from "./ChartColors";
 
 export function createTooltip(description: string) {
     const tooltip = (
@@ -28,9 +29,9 @@ export function buildChartHtml(chart: JSX.Element, title: string, tooltip: strin
 }
 
 const darkScaleOptions = {
-    grid: { color: 'rgba(255,255,255,0.15)' },
-    ticks: { color: 'rgba(255,255,255,0.8)' },
-    title: { color: 'rgba(255,255,255,0.8)' }
+    grid: { color: DARK_AXIS_COLORS.grid },
+    ticks: { color: DARK_AXIS_COLORS.label },
+    title: { color: DARK_AXIS_COLORS.label },
 };
 
 function applyDarkScaleOptions(scales: Record<string, unknown>): void {

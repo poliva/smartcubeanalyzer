@@ -21,7 +21,7 @@ import {
     buildInspectionData,
     buildTypicalCompare,
 } from '../Helpers/ChartDataBuilders';
-import { applyPaletteToChartData } from '../Helpers/ChartColors';
+import { applyPaletteToChartData, SEGMENT_COLORS } from '../Helpers/ChartColors';
 import { analyzeStepMoves, computeCaseFailureStats, computeSolveEfficiency } from '../Helpers/MoveAnalysis';
 import { getAufMovesForSolve } from '../Helpers/CsvParser';
 import { Const } from '../Helpers/Constants';
@@ -229,12 +229,7 @@ function buildRunningEfficiencyData(
 // ── Case data (OLL/PLL single-step) ──────────────────────────────────────────
 
 function buildCaseData(solves: Solve[], steps: StepName[], windowSize: number, use4SegmentTiming: boolean) {
-    const colors = {
-        recognition: 'rgb(54, 162, 235)',
-        preAuf: 'rgb(153, 102, 255)',
-        execution: 'rgb(255, 99, 132)',
-        postAuf: 'rgb(255, 159, 64)',
-    };
+    const colors = SEGMENT_COLORS;
     if (steps.length !== 1 || (steps[0] !== StepName.OLL && steps[0] !== StepName.PLL)) {
         return { labels: [], datasets: [] };
     }

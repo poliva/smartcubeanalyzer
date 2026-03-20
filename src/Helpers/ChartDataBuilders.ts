@@ -15,6 +15,7 @@ import {
 } from './MathHelpers';
 import { CrossColor, Solve, StepName } from './Types';
 import { OllEdgeOrientation, PllCornerPermutation } from './Types';
+import { SEGMENT_COLORS } from './ChartColors';
 
 export function buildRunningAverageData(
     solves: Solve[],
@@ -105,12 +106,7 @@ export function buildRunningRecognitionExecution(
     pointsPerGraph: number,
     use4SegmentTiming: boolean
 ): ChartData<'line'> {
-    const colors = {
-        recognition: 'rgb(54, 162, 235)',
-        preAuf: 'rgb(153, 102, 255)',
-        execution: 'rgb(255, 99, 132)',
-        postAuf: 'rgb(255, 159, 64)',
-    };
+    const colors = SEGMENT_COLORS;
     let movingRecognition = calculateMovingAverage(solves.map((x) => x.recognitionTime), windowSize);
     let labels = Array.from({ length: movingRecognition.length }, (_, i) => (i + 1).toString());
     movingRecognition = reduceDataset(movingRecognition, pointsPerGraph);
