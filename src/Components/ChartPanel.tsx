@@ -13,7 +13,7 @@ import {
 } from "../Helpers/Types";
 import { Chart as ChartJS, ChartData, CategoryScale } from 'chart.js/auto';
 import { createOptions, buildChartHtml } from "../Helpers/ChartHelpers";
-import { Row, Spinner, Tooltip } from "react-bootstrap";
+import { Row, Col, Card, ButtonGroup, Button, OverlayTrigger, Ratio, Spinner, Tooltip } from "react-bootstrap";
 import { ThemeContext } from "../contexts/ThemeContext";
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import { Const } from "../Helpers/Constants";
@@ -70,7 +70,7 @@ const BEST_SOLVES_COLS = [
 
 export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState & { _propsKey?: string }> {
     static contextType = ThemeContext;
-    state: ChartPanelState & { _propsKey?: string } = { chartData: null, isComputing: false };
+    state: ChartPanelState & { _propsKey?: string } = { chartData: null, isComputing: false, solvesPerPeriod: 'day' };
 
     static getDerivedStateFromProps(
         nextProps: ChartPanelProps,
@@ -253,6 +253,34 @@ export class ChartPanel extends React.Component<ChartPanelProps, ChartPanelState
         }
         charts.push(buildChartHtml(<div style={chartDataGridWrapStyle}><DataGrid style={chartDataGridStyle} rows={c.streakRows as StreakRow[]} columns={STREAK_COLS} /></div>, "Longest Daily Streaks", "How many days in a row you've achieved solves of each time"));
         charts.push(buildChartHtml(<Line data={c.dailyRecord as ChartData<"line">} options={createOptions(ChartType.Line, "Date", "Time (s)", p.useLogScale, true, true, isDark)} />, "Daily Fastest Solve", "This chart shows the fastest solve for each day, based on the selected filters"));
+        {
+            const period = this.state.solvesPerPeriod;
+            const periodLabels: Record<typeof period, string> = { day: 'Daily', week: 'Weekly', month: 'Monthly' };
+            const periodData = { day: c.solvesPerDay, week: c.solvesPerWeek, month: c.solvesPerMonth }[period];
+            const xAxisLabel = { day: 'Date', week: 'Week Starting', month: 'Month' }[period];
+            charts.push(
+                <Col key="solvesPerPeriod" className="col-12 col-md-6">
+                    <Card className="p-2 p-md-3 shadow-sm">
+                        <OverlayTrigger placement="top" overlay={<Tooltip id="tooltip-solves-period">Number of solves completed per day, week, or month</Tooltip>}>
+                            <Card.Text className="text-center fw-bold">Solve Count ⓘ</Card.Text>
+                        </OverlayTrigger>
+                        <div className="d-flex justify-content-center mb-2">
+                            <ButtonGroup size="sm">
+                                {(['day', 'week', 'month'] as const).map(p => (
+                                    <Button key={p} variant={period === p ? 'primary' : 'outline-secondary'}
+                                        onClick={() => this.setState({ solvesPerPeriod: p })}>
+                                        {periodLabels[p]}
+                                    </Button>
+                                ))}
+                            </ButtonGroup>
+                        </div>
+                        <Ratio aspectRatio="4x3">
+                            <Bar data={periodData as ChartData<"bar">} options={createOptions(ChartType.Bar, xAxisLabel, "Solves", false, false, false, isDark)} />
+                        </Ratio>
+                    </Card>
+                </Col>
+            );
+        }
         charts.push(buildChartHtml(<div style={chartDataGridWrapStyle}><DataGrid style={chartDataGridStyle} rows={c.recordRows as RecordRow[]} columns={RECORD_COLS} /></div>, "Current Records", "This chart shows your current records for Single, Ao5, Ao12, Ao100, and Ao1000"));
 
         if (hasOll) {

@@ -214,6 +214,28 @@ function buildDailyRecordData(solves: Solve[]) {
     };
 }
 
+function buildSolvesPerPeriodData(solves: Solve[], period: 'day' | 'week' | 'month') {
+    const counts: { [key: string]: number } = {};
+    for (const solve of solves) {
+        let key: string;
+        if (period === 'day') {
+            key = solve.date.toLocaleDateString('en-CA');
+        } else if (period === 'week') {
+            const d = new Date(solve.date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            d.setDate(diff);
+            key = d.toLocaleDateString('en-CA');
+        } else {
+            key = solve.date.toISOString().slice(0, 7);
+        }
+        counts[key] = (counts[key] ?? 0) + 1;
+    }
+    const labels = Object.keys(counts).sort();
+    const label = period === 'day' ? 'Solves per Day' : period === 'week' ? 'Solves per Week' : 'Solves per Month';
+    return { labels, datasets: [{ label, data: labels.map(k => counts[k]) }] };
+}
+
 // ── Efficiency ───────────────────────────────────────────────────────────────
 
 function buildRunningEfficiencyData(
@@ -403,6 +425,9 @@ function computeAllChartData(input: WorkerInput): Record<string, unknown> {
             ? buildInspectionData(inspectionSolves, windowSize)
             : null,
         dailyRecord: buildDailyRecordData(solves),
+        solvesPerDay: buildSolvesPerPeriodData(solves, 'day'),
+        solvesPerWeek: buildSolvesPerPeriodData(solves, 'week'),
+        solvesPerMonth: buildSolvesPerPeriodData(solves, 'month'),
         streakRows: buildAllStreakRows(solves),
         recordRows: buildRecordRows(solves),
         goodBad: buildGoodBadData(solves, windowSize, pointsPerGraph, goodTime, badTime),
@@ -423,7 +448,7 @@ function computeAllChartData(input: WorkerInput): Record<string, unknown> {
     const chartDataKeys = [
         'runningAverage', 'runningStdDev', 'runningTps', 'runningInspection', 'runningTurns',
         'runningRecognitionExecution', 'runningEfficiency', 'histogram', 'stepAverages',
-        'runningColorPercentages', 'inspection', 'dailyRecord', 'goodBad', 'recordHistory',
+        'runningColorPercentages', 'inspection', 'dailyRecord', 'solvesPerDay', 'solvesPerWeek', 'solvesPerMonth', 'goodBad', 'recordHistory',
         'stepPercentages', 'typicalCompare', 'ollCategory', 'pllCategory', 'caseData',
     ] as const;
     for (const key of chartDataKeys) {

@@ -212,6 +212,7 @@ export interface ChartPanelProps {
 export interface ChartPanelState {
     chartData: Record<string, unknown> | null;
     isComputing: boolean;
+    solvesPerPeriod: 'day' | 'week' | 'month';
 }
 
 export interface StreakRow {
