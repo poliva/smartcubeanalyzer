@@ -112,17 +112,17 @@ function buildRecordRows(solves: Solve[]): RecordRow[] {
     const ao5 = Math.min.apply(null, calculateMovingAverage(times, 5));
     const ao12 = Math.min.apply(null, calculateMovingAverageChopped(times, 12, 1));
     const ao100 = Math.min.apply(null, calculateMovingAverageChopped(times, 100, 5));
-    //const ao1000 = Math.min.apply(null, calculateMovingAverageChopped(times, 1000, 50));
+    const ao1000 = Math.min.apply(null, calculateMovingAverageChopped(times, 1000, 50));
     return [
         { recordType: 'Single', time: single.toFixed(3) },
         { recordType: 'Ao5', time: ao5.toFixed(3) },
         { recordType: 'Ao12', time: ao12.toFixed(3) },
         { recordType: 'Ao100', time: ao100.toFixed(3) },
-        //{ recordType: 'Ao1000', time: ao1000.toFixed(3) },
+        { recordType: 'Ao1000', time: ao1000.toFixed(3) },
     ];
 }
 
-function buildRecordDatasetDaily(dates: Date[], times: number[], allDays: boolean) {
+function buildRecordDatasetDaily(dates: Date[], times: number[]) {
     if (dates.length === 0) return [];
 
     // Step 1: group by day, keep the minimum value per day
@@ -144,34 +144,7 @@ function buildRecordDatasetDaily(dates: Date[], times: number[], allDays: boolea
         }
     }
 
-    if (!allDays) {
-        return records.map(r => ({ x: r.date, y: r.value }));
-    }
-
-    // Step 3: allDays mode — emit one point per calendar day, carrying the current record forward
-    const result: { x: Date; y: number }[] = [];
-    let recordIdx = 0;
-
-    const cursor = new Date(dayData[0].date);
-    cursor.setHours(0, 0, 0, 0);
-    const endDate = new Date(dayData[dayData.length - 1].date);
-    endDate.setHours(0, 0, 0, 0);
-
-    while (cursor <= endDate) {
-        const cursorDay = cursor.toLocaleDateString('en-CA');
-        // Advance to the latest record that was set on or before today
-        while (recordIdx + 1 < records.length &&
-               records[recordIdx + 1].date.toLocaleDateString('en-CA') <= cursorDay) {
-            recordIdx++;
-        }
-        // Only emit once the first record day has been reached
-        if (records[recordIdx].date.toLocaleDateString('en-CA') <= cursorDay) {
-            result.push({ x: new Date(cursor), y: records[recordIdx].value });
-        }
-        cursor.setDate(cursor.getDate() + 1);
-    }
-
-    return result;
+    return records.map(r => ({ x: r.date, y: r.value }));
 }
 
 function buildRecordHistory(solves: Solve[], allDays: boolean) {
@@ -180,14 +153,33 @@ function buildRecordHistory(solves: Solve[], allDays: boolean) {
     const ao5 = calculateMovingAverage(times, 5);
     const ao12 = calculateMovingAverageChopped(times, 12, 1);
     const ao100 = calculateMovingAverageChopped(times, 100, 5);
-    //const ao1000 = calculateMovingAverageChopped(times, 1000, 50);
+    const ao1000 = calculateMovingAverageChopped(times, 1000, 50);
+
+    // When allDays is on, expose the full solve date range so ChartPanel can set
+    // min/max on the 'time' scale — no null anchors needed, avoids rendering issues.
+    let xAxisMin: Date | undefined;
+    let xAxisMax: Date | undefined;
+    if (allDays && dates.length > 0) {
+        let minMs = dates[0].valueOf();
+        let maxMs = dates[0].valueOf();
+        for (let i = 1; i < dates.length; i++) {
+            const ms = dates[i].valueOf();
+            if (ms < minMs) minMs = ms;
+            if (ms > maxMs) maxMs = ms;
+        }
+        xAxisMin = new Date(minMs);
+        xAxisMax = new Date(maxMs);
+    }
+
     return {
+        xAxisMin,
+        xAxisMax,
         datasets: [
-            { label: 'Record Single', data: buildRecordDatasetDaily(dates, times, allDays) },
-            { label: 'Record Ao5', data: buildRecordDatasetDaily(dates.slice(4), ao5, allDays) },
-            { label: 'Record Ao12', data: buildRecordDatasetDaily(dates.slice(11), ao12, allDays) },
-            { label: 'Record Ao100', data: buildRecordDatasetDaily(dates.slice(99), ao100, allDays) },
-            //{ label: 'Record Ao1000', data: buildRecordDatasetDaily(dates.slice(999), ao1000, allDays) },
+            { label: 'Record Single', data: buildRecordDatasetDaily(dates, times) },
+            { label: 'Record Ao5', data: buildRecordDatasetDaily(dates.slice(4), ao5) },
+            { label: 'Record Ao12', data: buildRecordDatasetDaily(dates.slice(11), ao12) },
+            { label: 'Record Ao100', data: buildRecordDatasetDaily(dates.slice(99), ao100) },
+            { label: 'Record Ao1000', data: buildRecordDatasetDaily(dates.slice(999), ao1000) },
         ],
     };
 }

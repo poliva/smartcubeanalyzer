@@ -7,7 +7,7 @@ import { MultiSelect } from "react-multi-select-component";
 import { CrossColor, FilterPanelProps, FilterPanelState, Filters, getStep, MethodName, Option, Solve, SolveCleanliness, SolveLuckiness, Step, StepName } from "../Helpers/Types";
 import { ChartPanel } from "./ChartPanel";
 import { calculateMovingAverage, calculateMovingStdDev } from "../Helpers/MathHelpers";
-import { FormControl, Card, Row, Offcanvas, Col, Button, Tooltip, OverlayTrigger, Alert, Container, CardText, Spinner } from 'react-bootstrap';
+import { FormControl, Card, Row, Offcanvas, Col, Button, Tooltip, OverlayTrigger, Alert, Container, Spinner } from 'react-bootstrap';
 import { Const } from "../Helpers/Constants";
 import { CalculateAllSessionOptions, CalculateBenchmarkTimes, CalculateWindowSize } from "../Helpers/CubeHelpers";
 import ReactSwitch from "react-switch";
@@ -88,7 +88,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
         if (solve.isCorrupt) {
             return false;
         }
-        if (solve.method != filters.method) {
+        if (solve.method !== filters.method) {
             return false;
         }
         if (filters.sources.indexOf(solve.source) < 0) {
@@ -116,11 +116,11 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
 
         // TODO: check case logic properly
         const pllStep = getStep(solve, StepName.PLL);
-        if (solve.method == MethodName.CFOP && pllStep?.case !== undefined && filters.pllCases.indexOf(pllStep.case) < 0) {
+        if (solve.method === MethodName.CFOP && pllStep?.case !== undefined && filters.pllCases.indexOf(pllStep.case) < 0) {
             return false;
         }
         const ollStep = getStep(solve, StepName.OLL);
-        if (solve.method == MethodName.CFOP && ollStep?.case !== undefined && filters.ollCases.indexOf(ollStep.case) < 0) {
+        if (solve.method === MethodName.CFOP && ollStep?.case !== undefined && filters.ollCases.indexOf(ollStep.case) < 0) {
             return false;
         }
 
@@ -159,7 +159,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
 
     // For each step, check if it is 3 standard deviations more than the average
     static markAllMistakes(allSolves: Solve[], windowSize: number): Solve[] {
-        if (allSolves.length == 0) {
+        if (allSolves.length === 0) {
             return [];
         }
 
@@ -863,7 +863,7 @@ export class FilterPanel extends React.Component<FilterPanelProps, FilterPanelSt
                     {this.createFilterHtml(
                         <ReactSwitch id="recordHistoryAllDays" checked={this.state.recordHistoryAllDays} onChange={this.setRecordHistoryAllDays.bind(this)} />,
                         "Record History: All Days",
-                        "When on, the History of Records chart shows every calendar day from the first to the last solve. Days with no solve data carry forward the last known record value. When off (default), only days where a new record was set are shown."
+                        "When on, the History of Records chart shows every calendar day from the first to the last solve. When off (default), only days where a new record was set are shown."
                     )}
 
                     {this.createFilterHtml(
